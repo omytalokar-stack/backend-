@@ -31,7 +31,7 @@ const ProfileScreen: React.FC<Props> = ({ lang, onLogout, onViewAllOffers, onNot
       picture: fallbackUser.picture
     });
     if (token) {
-      const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
       fetch(`${API_BASE}/api/auth/me`, {
         headers: { Authorization: `Bearer ${token}` }
       })
@@ -65,7 +65,7 @@ const ProfileScreen: React.FC<Props> = ({ lang, onLogout, onViewAllOffers, onNot
     }
 
     try {
-      const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
       const response = await fetch(`${API_BASE}/api/auth/update-name`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -128,19 +128,22 @@ const ProfileScreen: React.FC<Props> = ({ lang, onLogout, onViewAllOffers, onNot
                 reader.onload = async () => {
                   const token = localStorage.getItem('token');
                   const body = JSON.stringify({ avatarUrl: reader.result });
-                  ifconst API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-                    await fetch(`${API_BASE}/api/auth/setup-profile`
-                    await fetch('http://localhost:5000/api/auth/setup-profile', {
+                  const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+                  if (token) {
+                    await fetch(`${API_BASE}/api/auth/setup-profile`, {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                       body
-                    }).then(r => r.ok ? r.json() : Promise.reject()).then(d => {
+                    })
+                    .then(r => r.ok ? r.json() : Promise.reject())
+                    .then(d => {
                       const u = d.user || {};
-                      setProfile({ ...profile, avatarUrl: u.avatarUrl || reader.result as string });
+                      setProfile({ ...profile, avatarUrl: (u.avatarUrl as string) || (reader.result as string) });
                       const local = localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')!) : {};
                       local.avatarUrl = u.avatarUrl || reader.result;
                       localStorage.setItem('user', JSON.stringify(local));
-                    }).catch(() => {
+                    })
+                    .catch(() => {
                       setProfile({ ...profile, avatarUrl: reader.result as string });
                       const local = localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')!) : {};
                       local.avatarUrl = reader.result;
