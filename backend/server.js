@@ -58,20 +58,7 @@ const defaultAllowed = [
 ];
 const allowedOrigins = process.env.FRONTEND_URLS ? process.env.FRONTEND_URLS.split(',') : defaultAllowed;
 const corsOptions = {
-  origin: function (origin, callback) {
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) !== -1) return callback(null, true);
-    // allow localhost dev ports
-    if (origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1')) return callback(null, true);
-    // allow Vercel deployments (wildcard for *.vercel.app)
-    try {
-      const parsed = new URL(origin);
-      if (parsed.hostname && parsed.hostname.endsWith('.vercel.app')) return callback(null, true);
-    } catch (e) {
-      // ignore parse errors
-    }
-    return callback(new Error('Not allowed by CORS'));
-  },
+  origin: true, // Allow all origins for testing
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']

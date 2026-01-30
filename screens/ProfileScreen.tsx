@@ -33,7 +33,8 @@ const ProfileScreen: React.FC<Props> = ({ lang, onLogout, onViewAllOffers, onNot
     if (token) {
       const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       fetch(`${API_BASE}/api/auth/me`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include'
       })
       .then(r => r.ok ? r.json() : Promise.reject(new Error('Failed')))
       .then(data => {
