@@ -37,7 +37,25 @@ const seedData = [
 
 async function seedServices() {
   try {
-    await mongoose.connect(process.env.MONGODB_URI);
+    const MONGODB_URI = process.env.MONGODB_URI || (() => {
+      const user = process.env.MONGO_USER;
+      const pass = process.env.MONGO_PASS;
+      const host = process.env.MONGO_HOST || 'cluster0.ia1xxxb.mongodb.net';
+      const db = process.env.MONGO_DB || '';
+      if (user && pass) {
+        const escUser = encodeURIComponent(user);
+        const escPass = encodeURIComponent(pass);
+        return `mongodb+srv://${escUser}:${escPass}@${host}/${db}?retryWrites=true&w=majority`;
+      }
+      return undefined;
+    })();
+
+    if (!MONGODB_URI) {
+      console.error('❌ No MongoDB URI configured for seeding. Set MONGODB_URI or MONGO_USER/MONGO_PASS.');
+      process.exit(1);
+    }
+
+    await mongoose.connect(MONGODB_URI);
     console.log('📦 Connected to MongoDB');
 
     // Clear existing services

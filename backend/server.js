@@ -49,14 +49,22 @@ app.use(express.json({ limit: '100mb' }));
 app.use(express.urlencoded({ limit: '100mb', extended: true }));
 
 // CORS configuration - allow frontend connections
+const defaultAllowed = [
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'http://localhost:5173',
+  'http://127.0.0.1:3000',
+  'https://wonderful-baklava-a7cfea.netlify.app'
+];
+const allowedOrigins = process.env.FRONTEND_URLS ? process.env.FRONTEND_URLS.split(',') : defaultAllowed;
 const corsOptions = {
-  origin: [
-    'http://localhost:3000',
-    'http://localhost:3001',
-    'http://localhost:5173',
-    'http://127.0.0.1:3000',
-    'https://wonderful-baklava-a7cfea.netlify.app'
-  ],
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      return callback(null, true);
+    }
+    return callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -74,8 +82,27 @@ app.use((req, res, next) => {
 app.use('/uploads', express.static(uploadsDir));
 
 // MongoDB Connection
+// Support either a full MONGODB_URI or building it from parts
+const MONGODB_URI = process.env.MONGODB_URI || (() => {
+  const user = process.env.MONGO_USER;
+  const pass = process.env.MONGO_PASS;
+  const host = process.env.MONGO_HOST || 'cluster0.ia1xxxb.mongodb.net';
+  const db = process.env.MONGO_DB || ''; // optional
+  if (user && pass) {
+    const escUser = encodeURIComponent(user);
+    const escPass = encodeURIComponent(pass);
+    return `mongodb+srv://${escUser}:${escPass}@${host}/${db}?retryWrites=true&w=majority`;
+  }
+  return undefined;
+})();
+
+if (!MONGODB_URI) {
+  console.error('❌ No MongoDB URI configured. Set MONGODB_URI or MONGO_USER/MONGO_PASS env vars.');
+  process.exit(1);
+}
+
 mongoose
-  .connect(process.env.MONGODB_URI)
+  .connect(MONGODB_URI)
   .then(() => {
     console.log('✅ MongoDB Connected');
     // Drop any accidental unique index on phone to allow multiple nulls
