@@ -60,8 +60,15 @@ const allowedOrigins = process.env.FRONTEND_URLS ? process.env.FRONTEND_URLS.spl
 const corsOptions = {
   origin: function (origin, callback) {
     if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1) return callback(null, true);
+    // allow localhost dev ports
+    if (origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1')) return callback(null, true);
+    // allow Vercel deployments (wildcard for *.vercel.app)
+    try {
+      const parsed = new URL(origin);
+      if (parsed.hostname && parsed.hostname.endsWith('.vercel.app')) return callback(null, true);
+    } catch (e) {
+      // ignore parse errors
     }
     return callback(new Error('Not allowed by CORS'));
   },
@@ -101,10 +108,16 @@ if (!MONGODB_URI) {
   process.exit(1);
 }
 
+// Log a masked URI for debugging (do not print credentials)
+try {
+  const masked = MONGODB_URI.replace(/mongodb\+srv:\/\/(.*?):(.*?)@/, 'mongodb+srv://<user>:<pass>@');
+  console.log('🔗 MongoDB URI:', masked);
+} catch (e) {}
+
 mongoose
   .connect(MONGODB_URI)
   .then(() => {
-    console.log('✅ MongoDB Connected');
+    console.log('✅ MongoDB Connected to DB:', mongoose.connection.name || 'unknown');
     // Drop any accidental unique index on phone to allow multiple nulls
     const db = mongoose.connection.db;
     const users = db.collection('users');
