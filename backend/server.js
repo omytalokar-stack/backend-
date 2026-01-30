@@ -50,7 +50,12 @@ app.use(express.urlencoded({ limit: '100mb', extended: true }));
 
 // CORS configuration - allow frontend connections
 const corsOptions = {
-  origin: ['http://localhost:3000', 'http://localhost:3001', 'http://127.0.0.1:3000'],
+  origin: [
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://127.0.0.1:3000',
+    'https://princess-kpy33gr9q-1alolololol4a-4381s-projects.vercel.app'
+  ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
