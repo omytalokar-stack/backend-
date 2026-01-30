@@ -4,7 +4,7 @@ import { translations } from '../translations';
 import { Service, Language } from '../types';
 import { Heart, MessageCircle, Bookmark, Gift, Play } from 'lucide-react';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 interface Props {
   lang: Language;

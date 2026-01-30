@@ -54,7 +54,8 @@ const corsOptions = {
     'http://localhost:3000',
     'http://localhost:3001',
     'http://127.0.0.1:3000',
-    'https://princess-kpy33gr9q-1alolololol4a-4381s-projects.vercel.app'
+    'https://princess-kpy33gr9q-1alolololol4a-4381s-projects.vercel.app',
+    'https://princess-6fv7uqb0l-1alolololola-4381s-projects.vercel.app'
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
