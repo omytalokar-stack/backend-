@@ -78,9 +78,9 @@ const NotificationsScreen: React.FC<Props> = ({ onClose }) => {
     try {
       const token = localStorage.getItem('token');
       if (!token) return;
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      await fetch(`${API_BASE}/api/notifications/delete`
-      await fetch('http://localhost:5000/api/notifications/delete', {
+
+      const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      await fetch(`${API_BASE}/api/notifications/delete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ notificationId }),
@@ -98,9 +98,9 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
     try {
       const token = localStorage.getItem('token');
       if (!token) return;
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      await fetch(`${API_BASE}/api/notifications/clear-all`
-      await fetch('http://localhost:5000/api/notifications/clear-all', {
+
+      const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      await fetch(`${API_BASE}/api/notifications/clear-all`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });
