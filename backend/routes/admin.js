@@ -160,8 +160,10 @@ router.post('/upload', authenticateToken, ensureAdmin, upload.single('file'), as
       return res.status(400).json({ error: 'No file provided' });
     }
 
-    // Generate URL for the uploaded file
-    const fileUrl = `http://localhost:5000/uploads/${req.file.filename}`;
+    // Generate URL for the uploaded file using environment or request origin
+    // On Render, use the backend URL from env or construct from request
+    const baseUrl = process.env.BACKEND_URL || `${req.protocol}://${req.get('host')}`;
+    const fileUrl = `${baseUrl}/uploads/${req.file.filename}`;
     
     console.log(`✅ Upload successful: ${req.file.originalname} → ${fileUrl}`);
     res.json({ 
