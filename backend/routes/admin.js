@@ -40,6 +40,60 @@ const upload = multer({
   }
 });
 
+// TEMP: Seed endpoint (no auth) - for testing/development only
+router.post('/seed', async (req, res) => {
+  try {
+    const seedData = [
+      {
+        name: { en: 'Luxury Spa', hi: 'लक्जरी स्पा' },
+        features: { en: 'Body massage, Steam, Glow', hi: 'बॉडी मसाज, स्टीम, ग्लो' },
+        category: 'Spa',
+        imageUrl: 'https://picsum.photos/seed/spa/400/600',
+        thumbnail: 'https://picsum.photos/seed/spa/400/600',
+        videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-girl-getting-a-facial-massage-at-a-spa-32750-large.mp4',
+        durationMinutes: 60,
+        baseRate: 1500,
+        offerOn: false,
+        time: '60 min',
+        rate: '₹1500'
+      },
+      {
+        name: { en: 'House Cleaning', hi: 'घर की सफाई' },
+        features: { en: 'Deep clean, Vacuuming, Sanitizing', hi: 'डीप क्लीन, वैक्यूमिंग, सैनिटाइजिंग' },
+        category: 'Cleaning',
+        imageUrl: 'https://picsum.photos/seed/clean/400/600',
+        thumbnail: 'https://picsum.photos/seed/clean/400/600',
+        videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-young-woman-cleaning-glass-with-a-spray-and-rag-41618-large.mp4',
+        durationMinutes: 120,
+        baseRate: 800,
+        offerOn: false,
+        time: '120 min',
+        rate: '₹800'
+      },
+      {
+        name: { en: 'Makeup Artistry', hi: 'मेकअप आर्टिस्ट्री' },
+        features: { en: 'Bridal, Party, Minimal', hi: 'ब्राइडल, पार्टी, मिनिमल' },
+        category: 'Makeup',
+        imageUrl: 'https://picsum.photos/seed/makeup/400/600',
+        thumbnail: 'https://picsum.photos/seed/makeup/400/600',
+        videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-woman-applying-makeup-to-her-face-with-a-brush-34533-large.mp4',
+        durationMinutes: 90,
+        baseRate: 2500,
+        offerOn: false,
+        time: '90 min',
+        rate: '₹2500'
+      }
+    ];
+    await Service.deleteMany({});
+    const inserted = await Service.insertMany(seedData);
+    console.log('✅ Seeded', inserted.length, 'services');
+    res.json({ message: 'Database seeded successfully', count: inserted.length });
+  } catch (e) {
+    console.error('❌ Seed error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 router.post('/services', authenticateToken, ensureAdmin, async (req, res) => {
   try {
     const s = await Service.create(req.body);
