@@ -1,0 +1,35 @@
+
+export type Language = 'en' | 'hi';
+
+export interface Service {
+  id: string;
+  name: { en: string; hi?: string };
+  features: { en: string; hi?: string };
+  time: string;
+  rate: string;
+  videoUrl: string;
+  thumbnail: string;
+  category?: string;
+  baseRate?: number;
+  offerOn?: boolean;
+  likes?: number;
+  views?: number;
+}
+
+export interface Order {
+  id: string;
+  serviceName: string;
+  status: 'Pending' | 'Done';
+  date: string;
+  rate: string;
+  startHour?: number;
+  endHour?: number;
+}
+
+export interface AppState {
+  language: Language;
+  currentTab: 'home' | 'reels' | 'trending' | 'profile';
+  selectedService: Service | null;
+  orders: Order[];
+  isBookingOpen: boolean;
+}

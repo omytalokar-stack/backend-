@@ -1,0 +1,8 @@
+{
+  "name": "PastelService - Cute Booking App",
+  "description": "A delightful service booking application featuring a pastel aesthetic, vertical video reels, and full Hindi-English language support.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
