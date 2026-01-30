@@ -68,7 +68,7 @@ const HomeScreen: React.FC<Props> = ({ lang, services, onNavigate, onServiceSele
               <img 
                 src={
                   service.imageUrl 
-                    ? (service.imageUrl.startsWith('http') ? service.imageUrl : `http://localhost:5000/${service.imageUrl}`)
+                    ? (service.imageUrl.startsWith('http') ? service.imageUrl : `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/${service.imageUrl}`)
                     : (service.thumbnail || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="160" height="128"%3E%3Crect fill="%23f1f5f9" width="160" height="128"/%3E%3C/svg%3E')
                 }
                 alt={typeof service.name === 'object' ? service.name[lang] : service.name || 'Service'} 

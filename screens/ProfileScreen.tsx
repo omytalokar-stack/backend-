@@ -31,7 +31,8 @@ const ProfileScreen: React.FC<Props> = ({ lang, onLogout, onViewAllOffers, onNot
       picture: fallbackUser.picture
     });
     if (token) {
-      fetch('http://localhost:5000/api/auth/me', {
+      const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      fetch(`${API_BASE}/api/auth/me`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       .then(r => r.ok ? r.json() : Promise.reject(new Error('Failed')))
@@ -64,7 +65,8 @@ const ProfileScreen: React.FC<Props> = ({ lang, onLogout, onViewAllOffers, onNot
     }
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/update-name', {
+      const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${API_BASE}/api/auth/update-name`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ name: editName.trim() }),
@@ -126,7 +128,8 @@ const ProfileScreen: React.FC<Props> = ({ lang, onLogout, onViewAllOffers, onNot
                 reader.onload = async () => {
                   const token = localStorage.getItem('token');
                   const body = JSON.stringify({ avatarUrl: reader.result });
-                  if (token) {
+                  ifconst API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+                    await fetch(`${API_BASE}/api/auth/setup-profile`
                     await fetch('http://localhost:5000/api/auth/setup-profile', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },

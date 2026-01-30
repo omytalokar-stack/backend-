@@ -42,7 +42,8 @@ const ProfileSetup: React.FC<Props> = ({ lang, onSetupComplete }) => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/auth/setup-profile', {
+      const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${API_BASE}/api/auth/setup-profile`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -28,7 +28,8 @@ const TrendingScreen: React.FC<Props> = ({ lang, services, onSelect, getDisplayR
           <p className="text-slate-400 col-span-2">No trending services</p>
         ) : services.map((service, idx) => {
           if (!service) return null;
-          const thumbUrl = (service as any).imageUrl && (service.imageUrl as string) ? `${((service.imageUrl as string) || '').startsWith('http') ? service.imageUrl : 'http://localhost:5000/' + service.imageUrl}` : (service.thumbnail || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="160" height="180"%3E%3Crect fill="%23f1f5f9" width="160" height="180"/%3E%3C/svg%3E');
+          const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+          const thumbUrl = (service as any).imageUrl && (service.imageUrl as string) ? `${((service.imageUrl as string) || '').startsWith('http') ? service.imageUrl : API_BASE + '/' + service.imageUrl}` : (service.thumbnail || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="160" height="180"%3E%3Crect fill="%23f1f5f9" width="160" height="180"/%3E%3C/svg%3E');
           return (
           <div 
             key={`${service._id || service.id}-${idx}`}
