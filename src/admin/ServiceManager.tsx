@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+import { API_BASE, uploadFile, apiCall } from '../api';
 
 type ServiceItem = {
   _id: string;
@@ -36,7 +35,10 @@ const ServiceManager: React.FC<{ showFormDefault?: boolean }> = ({ showFormDefau
 
   const load = async () => {
     if (!token) return;
-    const r = await fetch(`${API_BASE}/api/admin/services`, { headers: { Authorization: `Bearer ${token}` } });
+    const r = await fetch(`${API_BASE}/api/admin/services`, { 
+      headers: { Authorization: `Bearer ${token}` },
+      credentials: 'include'
+    });
     const d = await r.json();
     setServices(Array.isArray(d) ? d : []);
     try {
@@ -66,28 +68,15 @@ const ServiceManager: React.FC<{ showFormDefault?: boolean }> = ({ showFormDefau
   }, []);
 
   const uploadViaBackend = async (file: File) => {
-    const token = localStorage.getItem('token');
-    const fd = new FormData();
-    fd.append('file', file);
-    console.log('📤 Uploading file:', file.name, 'Size:', file.size);
-    const r = await fetch(`${API_BASE}/api/admin/upload`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token!}` },
-      body: fd
-    });
-    const text = await r.text();
-    console.log('Response status:', r.status, 'Body:', text.substring(0, 100));
-    if (r.ok) {
-      try {
-        const d = JSON.parse(text);
-        console.log('✅ Upload successful');
-        return d.url as string;
-      } catch (parseErr) {
-        console.error('Failed to parse response:', parseErr);
-        throw new Error('Invalid response format');
-      }
+    try {
+      console.log('📤 Uploading file:', file.name, 'Size:', file.size);
+      const url = await uploadFile(file);
+      console.log('✅ Upload successful');
+      return url;
+    } catch (err) {
+      console.error('❌ Upload error:', err);
+      throw err;
     }
-    throw new Error(`Upload failed: ${r.status} - ${text}`);
   };
 
   const addService = async () => {
@@ -99,7 +88,8 @@ const ServiceManager: React.FC<{ showFormDefault?: boolean }> = ({ showFormDefau
     const r = await fetch(`${API_BASE}/api/admin/services`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ ...form, imageUrl, videoUrl })
+      body: JSON.stringify({ ...form, imageUrl, videoUrl }),
+      credentials: 'include'
     });
     if (r.ok) {
       setForm({ name: '', description: '', category: 'General', durationMinutes: 60, baseRate: 0, offerOn: false });
@@ -114,7 +104,8 @@ const ServiceManager: React.FC<{ showFormDefault?: boolean }> = ({ showFormDefau
     await fetch(`${API_BASE}/api/admin/services/${id}/toggle-offer`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ offerOn })
+      body: JSON.stringify({ offerOn }),
+      credentials: 'include'
     });
     load();
   };
@@ -144,7 +135,8 @@ const ServiceManager: React.FC<{ showFormDefault?: boolean }> = ({ showFormDefau
     await fetch(`${API_BASE}/api/admin/services/${editingId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
+      credentials: 'include'
     });
     setEditingId(null);
     load();
@@ -154,7 +146,8 @@ const ServiceManager: React.FC<{ showFormDefault?: boolean }> = ({ showFormDefau
     if (!token) return;
     await fetch(`${API_BASE}/api/admin/services/${id}`, {
       method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` },
+      credentials: 'include'
     });
     load();
   };

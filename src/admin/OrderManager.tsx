@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ErrorBoundary } from '../ErrorBoundary';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+import { API_BASE } from '../api';
 
 type BookingItem = {
   _id: string;
@@ -30,9 +29,18 @@ const OrderManager: React.FC = () => {
     if (!token) return;
     try {
       console.log('📥 Fetching orders, services, users...');
-      const r1 = await fetch(`${API_BASE}/api/admin/orders`, { headers: { Authorization: `Bearer ${token}` } });
-      const r2 = await fetch(`${API_BASE}/api/admin/services`, { headers: { Authorization: `Bearer ${token}` } });
-      const r3 = await fetch(`${API_BASE}/api/admin/users`, { headers: { Authorization: `Bearer ${token}` } });
+      const r1 = await fetch(`${API_BASE}/api/admin/orders`, { 
+        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include'
+      });
+      const r2 = await fetch(`${API_BASE}/api/admin/services`, { 
+        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include'
+      });
+      const r3 = await fetch(`${API_BASE}/api/admin/users`, { 
+        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include'
+      });
       
       if (!r1.ok) console.error('❌ Orders fetch failed:', r1.status);
       if (!r2.ok) console.error('❌ Services fetch failed:', r2.status);
@@ -60,7 +68,11 @@ const OrderManager: React.FC = () => {
 
   const cleanup = async () => {
     if (!token) return;
-    await fetch(`${API_BASE}/api/admin/cleanup-orders`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+    await fetch(`${API_BASE}/api/admin/cleanup-orders`, { 
+      method: 'POST', 
+      headers: { Authorization: `Bearer ${token}` },
+      credentials: 'include'
+    });
     load();
   };
 
@@ -74,7 +86,8 @@ const OrderManager: React.FC = () => {
       const url = `${API_BASE}/api/admin/booking-chart?serviceId=${chartServiceId}&date=${chartDate}`;
       console.log('🔗 API URL:', url);
       const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include'
       });
       
       if (!res.ok) {
@@ -133,6 +146,7 @@ const OrderManager: React.FC = () => {
           bookingId: booking._id,
           message,
         }),
+        credentials: 'include'
       });
 
       if (response.ok) {

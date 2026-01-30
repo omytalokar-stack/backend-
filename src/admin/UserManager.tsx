@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+import { API_BASE } from '../api';
 
 type UserItem = {
   _id: string;
@@ -20,7 +19,10 @@ const UserManager: React.FC = () => {
   useEffect(() => {
     const load = async () => {
       if (!token) return;
-      const r = await fetch(`${API_BASE}/api/admin/users`, { headers: { Authorization: `Bearer ${token}` } });
+      const r = await fetch(`${API_BASE}/api/admin/users`, { 
+        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include'
+      });
       const d = await r.json();
       setUsers(Array.isArray(d) ? d : []);
     };

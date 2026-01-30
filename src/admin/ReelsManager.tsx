@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+import { API_BASE, uploadFile, apiCall } from '../api';
 
 type ReelItem = {
   id: string;
@@ -23,7 +22,10 @@ const ReelsManager: React.FC<{ showFormDefault?: boolean }> = ({ showFormDefault
     const token = localStorage.getItem('token');
     if (!token) return;
     try {
-      const r = await fetch(`${API_BASE}/api/admin/reels`, { headers: { Authorization: `Bearer ${token}` } });
+      const r = await fetch(`${API_BASE}/api/admin/reels`, { 
+        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include'
+      });
       if (!r.ok) {
         console.error('❌ Failed to fetch reels:', r.status);
         const raw = localStorage.getItem('adminReels');
@@ -54,28 +56,15 @@ const ReelsManager: React.FC<{ showFormDefault?: boolean }> = ({ showFormDefault
   };
 
   const uploadVideo = async (file: File) => {
-    const token = localStorage.getItem('token');
-    const fd = new FormData();
-    fd.append('file', file);
-    console.log('📤 Uploading video file:', file.name, 'Size:', file.size);
-    const r = await fetch(`${API_BASE}/api/admin/upload`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token!}` },
-      body: fd
-    });
-    const text = await r.text();
-    console.log('Response status:', r.status, 'Body:', text);
-    if (r.ok) {
-      try {
-        const d = JSON.parse(text);
-        console.log('✅ Upload successful');
-        return d.url as string;
-      } catch (parseErr) {
-        console.error('Failed to parse response:', parseErr);
-        throw new Error('Invalid response format');
-      }
+    try {
+      console.log('📤 Uploading video file:', file.name, 'Size:', file.size);
+      const url = await uploadFile(file);
+      console.log('✅ Upload successful');
+      return url;
+    } catch (err) {
+      console.error('❌ Upload error:', err);
+      throw err;
     }
-    throw new Error(`Upload failed: ${r.status} - ${text}`);
   };
 
   const addReel = async () => {
@@ -94,7 +83,8 @@ const ReelsManager: React.FC<{ showFormDefault?: boolean }> = ({ showFormDefault
       const r = await fetch(`${API_BASE}/api/admin/reels`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token!}` },
-        body: JSON.stringify({ videoUrl, description: form.description })
+        body: JSON.stringify({ videoUrl, description: form.description }),
+        credentials: 'include'
       });
       if (r.ok) {
         setForm({ videoUrl: '', description: '' });
@@ -125,7 +115,8 @@ const ReelsManager: React.FC<{ showFormDefault?: boolean }> = ({ showFormDefault
       const r = await fetch(`${API_BASE}/api/admin/reels/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token!}` },
-        body: JSON.stringify({ replies: [...(reels.find(r => r.id === id)?.replies || []), text] })
+        body: JSON.stringify({ replies: [...(reels.find(r => r.id === id)?.replies || []), text] }),
+        credentials: 'include'
       });
       if (r.ok) {
         setReplyText({ ...replyText, [id]: '' });
@@ -141,7 +132,11 @@ const ReelsManager: React.FC<{ showFormDefault?: boolean }> = ({ showFormDefault
   const removeReel = async (id: string) => {
     const token = localStorage.getItem('token');
     try {
-      const r = await fetch(`${API_BASE}/api/admin/reels/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token!}` } });
+      const r = await fetch(`${API_BASE}/api/admin/reels/${id}`, { 
+        method: 'DELETE', 
+        headers: { Authorization: `Bearer ${token!}` },
+        credentials: 'include'
+      });
       if (r.ok) {
         load();
         return;
@@ -165,7 +160,8 @@ const ReelsManager: React.FC<{ showFormDefault?: boolean }> = ({ showFormDefault
       const r = await fetch(`${API_BASE}/api/admin/reels/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token!}` },
-        body: JSON.stringify({ description: desc, videoUrl })
+        body: JSON.stringify({ description: desc, videoUrl }),
+        credentials: 'include'
       });
       if (r.ok) {
         load();
@@ -216,7 +212,12 @@ const ReelsManager: React.FC<{ showFormDefault?: boolean }> = ({ showFormDefault
                 if (isNaN(val)) return alert('Enter numeric likes');
                 const token = localStorage.getItem('token');
                 try {
-                  const res = await fetch(`${API_BASE}/api/admin/reels/${r.id}/likes`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token!}` }, body: JSON.stringify({ likes: val }) });
+                  const res = await fetch(`${API_BASE}/api/admin/reels/${r.id}/likes`, { 
+                    method: 'PATCH', 
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token!}` }, 
+                    body: JSON.stringify({ likes: val }),
+                    credentials: 'include'
+                  });
                   if (res.ok) { load(); setAnalyticsText({ ...analyticsText, [r.id]: '' }); }
                   else { alert('Failed to update'); }
                 } catch (e) { console.error(e); alert('Failed to update'); }
