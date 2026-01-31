@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { API_BASE, uploadFile, apiCall } from '../api';
+import { API_BASE, uploadFile, uploadFileWithProgress, apiCall } from '../api';
 
 type ServiceItem = {
   _id: string;
@@ -26,6 +26,8 @@ const ServiceManager: React.FC<{ showFormDefault?: boolean }> = ({ showFormDefau
   const token = localStorage.getItem('token');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [isUploading, setIsUploading] = useState<boolean>(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<ServiceItem>>({});
   const [editImageFile, setEditImageFile] = useState<File | null>(null);
@@ -70,7 +72,10 @@ const ServiceManager: React.FC<{ showFormDefault?: boolean }> = ({ showFormDefau
   const uploadViaBackend = async (file: File) => {
     try {
       console.log('📤 Uploading file:', file.name, 'Size:', file.size);
-      const url = await uploadFile(file);
+      setIsUploading(true);
+      setUploadProgress(0);
+      const url = await uploadFileWithProgress(file, (p) => setUploadProgress(p));
+      setUploadProgress(100);
       console.log('✅ Upload successful');
       return url;
     } catch (err) {
@@ -83,8 +88,16 @@ const ServiceManager: React.FC<{ showFormDefault?: boolean }> = ({ showFormDefau
     if (!token) return;
     let imageUrl = '';
     let videoUrl = '';
-    if (imageFile) imageUrl = await uploadViaBackend(imageFile);
-    if (videoFile) videoUrl = await uploadViaBackend(videoFile);
+    try {
+      if (imageFile) imageUrl = await uploadViaBackend(imageFile);
+      if (videoFile) videoUrl = await uploadViaBackend(videoFile);
+    } catch (e) {
+      setIsUploading(false);
+      setUploadProgress(0);
+      return;
+    } finally {
+      setIsUploading(false);
+    }
     const r = await fetch(`${API_BASE}/api/admin/services`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -121,8 +134,16 @@ const ServiceManager: React.FC<{ showFormDefault?: boolean }> = ({ showFormDefau
     if (!token || !editingId) return;
     let imageUrl = editForm.imageUrl || '';
     let videoUrl = editForm.videoUrl || '';
-    if (editImageFile) imageUrl = await uploadViaBackend(editImageFile);
-    if (editVideoFile) videoUrl = await uploadViaBackend(editVideoFile);
+    try {
+      if (editImageFile) imageUrl = await uploadViaBackend(editImageFile);
+      if (editVideoFile) videoUrl = await uploadViaBackend(editVideoFile);
+    } catch (e) {
+      setIsUploading(false);
+      setUploadProgress(0);
+      return;
+    } finally {
+      setIsUploading(false);
+    }
     const payload = { 
       name: editForm.name, 
       description: editForm.description, 
@@ -194,6 +215,14 @@ const ServiceManager: React.FC<{ showFormDefault?: boolean }> = ({ showFormDefau
               <label className="text-xs font-bold text-slate-500 block mb-1">Video</label>
               <input type="file" accept="video/*" className="px-3 py-2.5 border border-slate-200 rounded-[12px] w-full text-xs" onChange={e => setVideoFile(e.target.files?.[0] || null)} />
             </div>
+            {isUploading && (
+              <div className="w-full mb-2">
+                <div className="w-full bg-slate-200 h-2 rounded overflow-hidden">
+                  <div className="h-2 bg-pink-400" style={{ width: `${uploadProgress}%` }} />
+                </div>
+                <div className="text-xs text-slate-600 text-right mt-1">Uploading: {uploadProgress}%</div>
+              </div>
+            )}
             <button onClick={addService} className="w-full py-3 bg-[#FFB7C5] text-white font-black rounded-[12px] active:scale-95 text-sm">Submit</button>
           </div>
         </div>

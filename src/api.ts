@@ -87,3 +87,41 @@ export const uploadFile = async (file: File): Promise<string> => {
     throw new Error('Invalid response format from server');
   }
 };
+
+/**
+ * Upload with progress callback. Uses XHR so we can report upload progress to UI.
+ * onProgress receives numbers 0-100
+ */
+export const uploadFileWithProgress = (file: File, onProgress?: (p: number) => void): Promise<string> => {
+  const token = localStorage.getItem('token');
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    const url = `${API_BASE}/api/admin/upload`;
+    xhr.open('POST', url, true);
+    if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    xhr.withCredentials = true;
+    xhr.upload.onprogress = (ev) => {
+      if (ev.lengthComputable && typeof onProgress === 'function') {
+        const p = Math.round((ev.loaded / ev.total) * 100);
+        try { onProgress(p); } catch {}
+      }
+    };
+    xhr.onreadystatechange = () => {
+      if (xhr.readyState === 4) {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const data = JSON.parse(xhr.responseText);
+            resolve(data.url);
+          } catch (e) {
+            reject(new Error('Invalid upload response'));
+          }
+        } else {
+          reject(new Error(`Upload failed: ${xhr.status} ${xhr.statusText}`));
+        }
+      }
+    };
+    const fd = new FormData();
+    fd.append('file', file);
+    try { xhr.send(fd); } catch (e) { reject(e); }
+  });
+};

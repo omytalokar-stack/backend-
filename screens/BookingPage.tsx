@@ -144,20 +144,37 @@ const BookingPage: React.FC<Props> = ({ service, lang, onConfirm, getDisplayRate
             <Calendar size={14} /> {t.timeSlot}
           </label>
           <div className="flex flex-wrap gap-3">
-            {slots.map(s => (
-              <button
-                key={s.label}
-                onClick={() => setFormData({...formData, slot: s.label, startHour: s.startHour, endHour: s.endHour})}
-                className={`px-5 py-2.5 rounded-[30px] font-bold text-sm transition-all border-2 ${
-                  formData.slot === s.label 
-                    ? 'bg-[#FFB7C5] text-white border-[#FFB7C5] shadow-md scale-105' 
-                    : 'bg-white text-slate-600 border-slate-100 hover:border-pink-200'
-                }`}
-              >
-                {s.label}
-              </button>
-            ))}
-          </div>
+              {(() => {
+                const todayStr = new Date().toISOString().slice(0,10);
+                const isToday = formData.date === todayStr;
+                const now = new Date();
+                const minAllowedHour = now.getHours() + 1; // only slots >= this hour
+                const filtered = slots.filter(s => {
+                  if (!isToday) return true;
+                  return (typeof s.startHour === 'number') ? s.startHour >= minAllowedHour : true;
+                });
+                // If current selected slot is now invalid, clear it
+                if (isToday && formData.slot) {
+                  const stillValid = filtered.find(fs => fs.label === formData.slot);
+                  if (!stillValid) {
+                    setFormData({ ...formData, slot: '', startHour: 0, endHour: 0 });
+                  }
+                }
+                return filtered.map(s => (
+                  <button
+                    key={s.label}
+                    onClick={() => setFormData({...formData, slot: s.label, startHour: s.startHour, endHour: s.endHour})}
+                    className={`px-5 py-2.5 rounded-[30px] font-bold text-sm transition-all border-2 ${
+                      formData.slot === s.label 
+                        ? 'bg-[#FFB7C5] text-white border-[#FFB7C5] shadow-md scale-105' 
+                        : 'bg-white text-slate-600 border-slate-100 hover:border-pink-200'
+                    }`}
+                  >
+                    {s.label}
+                  </button>
+                ));
+              })()}
+            </div>
         </div>
 
         {/* COD Toggle */}

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { API_BASE, uploadFile, apiCall } from '../api';
+import { API_BASE, uploadFile, uploadFileWithProgress, apiCall } from '../api';
 
 type ReelItem = {
   id: string;
@@ -14,6 +14,8 @@ const ReelsManager: React.FC<{ showFormDefault?: boolean }> = ({ showFormDefault
   const [form, setForm] = useState({ videoUrl: '', description: '' });
   const [replyText, setReplyText] = useState<Record<string, string>>({});
   const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [isUploading, setIsUploading] = useState<boolean>(false);
   const [analyticsText, setAnalyticsText] = useState<Record<string, string>>({});
   const [showForm, setShowForm] = useState<boolean>(!!showFormDefault);
   useEffect(() => { setShowForm(!!showFormDefault); }, [showFormDefault]);
@@ -58,8 +60,11 @@ const ReelsManager: React.FC<{ showFormDefault?: boolean }> = ({ showFormDefault
   const uploadVideo = async (file: File) => {
     try {
       console.log('📤 Uploading video file:', file.name, 'Size:', file.size);
-      const url = await uploadFile(file);
+      setIsUploading(true);
+      setUploadProgress(0);
+      const url = await uploadFileWithProgress(file, (p) => setUploadProgress(p));
       console.log('✅ Upload successful');
+      setUploadProgress(100);
       return url;
     } catch (err) {
       console.error('❌ Upload error:', err);
@@ -74,7 +79,11 @@ const ReelsManager: React.FC<{ showFormDefault?: boolean }> = ({ showFormDefault
         videoUrl = await uploadVideo(videoFile);
       } catch (e) {
         console.error('Upload failed:', e);
+        setIsUploading(false);
+        setUploadProgress(0);
         return;
+      } finally {
+        setIsUploading(false);
       }
     }
     if (!videoUrl) return;
@@ -189,6 +198,14 @@ const ReelsManager: React.FC<{ showFormDefault?: boolean }> = ({ showFormDefault
               <input type="file" accept="video/*" className="px-3 py-2.5 border border-slate-200 rounded-[12px] w-full text-xs" onChange={e => setVideoFile(e.target.files?.[0] || null)} />
             </div>
             <textarea className="px-3 py-2.5 border border-slate-200 rounded-[12px] w-full text-sm" placeholder="Description" rows={2} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
+            {isUploading && (
+              <div className="w-full">
+                <div className="w-full bg-slate-200 h-2 rounded overflow-hidden">
+                  <div className="h-2 bg-pink-400" style={{ width: `${uploadProgress}%` }} />
+                </div>
+                <div className="text-xs text-slate-600 text-right mt-1">Uploading: {uploadProgress}%</div>
+              </div>
+            )}
             <button onClick={addReel} className="w-full py-3 bg-[#FFB7C5] text-white font-black rounded-[12px] active:scale-95 text-sm">Submit</button>
           </div>
         </div>
