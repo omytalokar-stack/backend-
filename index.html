@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Princess App</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&family=Playfair+Display:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&family=Playfair+Display:wght@400;600;700;900&family=Great+Vibes&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Quicksand', sans-serif;
@@ -14,11 +14,23 @@
             user-select: none;
             -webkit-tap-highlight-color: transparent;
         }
-        /* Branding font for headings */
-        .brand-heading { font-family: 'Playfair Display', serif; font-weight: 700; }
-        .brand-color { color: #D4AF37; /* elegant gold */ }
-        /* Slightly larger brand in navbar */
-        .navbar-brand { font-size: 1.4rem; }
+                /* Branding font for headings */
+                .brand-heading { font-family: 'Great Vibes', 'Playfair Display', serif; font-weight: 700; }
+                .brand-color { color: #D4AF37; /* elegant gold */ }
+                /* Slightly larger brand in navbar */
+                .navbar-brand { font-size: 1.6rem; }
+                /* Glow effect mixing pink and gold */
+                .brand-glow {
+                    color: #D4AF37;
+                    text-shadow: 0 0 8px rgba(255,183,197,0.9), 0 0 14px rgba(212,175,55,0.9), 0 2px 0 rgba(0,0,0,0.06);
+                }
+                /* Slow pulse animation */
+                @keyframes brandPulse {
+                    0% { transform: scale(1); filter: drop-shadow(0 0 6px rgba(255,183,197,0.6)); }
+                    50% { transform: scale(1.03); filter: drop-shadow(0 0 12px rgba(212,175,55,0.85)); }
+                    100% { transform: scale(1); filter: drop-shadow(0 0 6px rgba(255,183,197,0.6)); }
+                }
+                .brand-pulse { display:inline-block; animation: brandPulse 3.5s ease-in-out infinite; }
         /* Custom scrollbar for cute aesthetics */
         ::-webkit-scrollbar {
             width: 6px;

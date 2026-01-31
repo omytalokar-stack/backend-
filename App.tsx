@@ -731,7 +731,7 @@ const App: React.FC = () => {
                 </button>
               )}
               <h1 className="brand-heading navbar-brand font-extrabold tracking-tight">
-                <span className="brand-color">{view === 'main' ? 'Princess' : view === 'admin' ? 'Admin Panel' : t.serviceDetails}</span>
+                <span className="brand-pulse brand-glow"><span className="mr-2">👑</span>{view === 'main' ? 'Princess' : view === 'admin' ? 'Admin Panel' : t.serviceDetails}</span>
               </h1>
             </div>
             

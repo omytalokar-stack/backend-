@@ -9,7 +9,8 @@ export default defineConfig(({ mode }) => {
         port: 3000,
         host: '0.0.0.0',
         // reduce HMR overlay noise on some local networks
-        hmr: { overlay: false },
+        // disable HMR entirely for environments where ws://localhost errors occur
+        hmr: false,
         headers: {
           "Cross-Origin-Resource-Policy": "cross-origin",
           "Access-Control-Allow-Origin": "*"
