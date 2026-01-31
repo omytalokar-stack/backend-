@@ -26,10 +26,13 @@ const BookingPage: React.FC<Props> = ({ service, lang, onConfirm, getDisplayRate
   });
 
   const [slots, setSlots] = useState<{ label: string; startHour: number; endHour: number }[]>([]);
+  
   useEffect(() => {
     const token = localStorage.getItem('token');
     const date = formData.date; // use selected date
     const id = (service as any)._id || service.id;
+    
+    console.log(`📅 Date selected: ${date}, Service ID: ${id}`);
     
     if (!token || !id) {
       console.warn('⚠️ No token or service id, using fallback slots');
@@ -45,20 +48,23 @@ const BookingPage: React.FC<Props> = ({ service, lang, onConfirm, getDisplayRate
       return;
     }
     
-    console.log('📥 Fetching available slots for:', { serviceId: id, date, token: !!token });
-    fetch(`${API_BASE}/api/bookings/available?serviceId=${id}&date=${date}`, {
+    const url = `${API_BASE}/api/bookings/available?serviceId=${id}&date=${date}`;
+    console.log(`🔗 Fetching slots from: ${url}`);
+    
+    fetch(url, {
       headers: { Authorization: `Bearer ${token}` }
     })
       .then(r => {
         if (!r.ok) {
-          console.error(`❌ Slot fetch failed: ${r.status}`);
+          console.error(`❌ Slot fetch failed: ${r.status} ${r.statusText}`);
           throw new Error(`${r.status}`);
         }
         return r.json();
       })
       .then(d => {
         console.log('✅ Slots fetched:', d.slots?.length || 0, 'available');
-        const fetchedSlots = d.slots || [];
+        const fetchedSlots = (d.slots || []).filter((s: any) => s && typeof s.startHour === 'number');
+        
         if (fetchedSlots.length === 0) {
           console.warn('⚠️ No slots returned, using all 1-7 PM slots as available');
           setSlots([
@@ -188,6 +194,11 @@ const BookingPage: React.FC<Props> = ({ service, lang, onConfirm, getDisplayRate
                   )}
                 </>
               );
+            })()}
+          </div>
+        </div>
+
+        {/* Summary */}
         <div className="p-6 bg-slate-50 rounded-[30px] space-y-3">
           <div className="flex justify-between text-slate-500 font-bold uppercase text-[10px]">
             <span>Service Total</span>
