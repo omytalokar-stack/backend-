@@ -8,6 +8,8 @@ export default defineConfig(({ mode }) => {
       server: {
         port: 3000,
         host: '0.0.0.0',
+        // reduce HMR overlay noise on some local networks
+        hmr: { overlay: false },
         headers: {
           "Cross-Origin-Resource-Policy": "cross-origin",
           "Access-Control-Allow-Origin": "*"

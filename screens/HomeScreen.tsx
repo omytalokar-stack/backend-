@@ -16,7 +16,7 @@ const HomeScreen: React.FC<Props> = ({ lang, services, onNavigate, onServiceSele
   const t = translations[lang];
 
   return (
-    <div className="p-6 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="p-4 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Offers Shortcut */}
       <div className="p-4 rounded-[30px] border-2 border-slate-100 bg-white shadow-sm flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -57,7 +57,7 @@ const HomeScreen: React.FC<Props> = ({ lang, services, onNavigate, onServiceSele
 
       {/* Featured Services */}
       <div className="space-y-4">
-        <h3 className="text-xl font-bold text-slate-800 px-1">{t.trendingServices}</h3>
+        <h3 className="text-xl font-bold text-slate-800 px-1 brand-heading">{t.trendingServices}</h3>
         <div className="flex gap-4 overflow-x-auto pb-4 -mx-1 px-1">
           {services.map((service, idx) => (
             <div 
@@ -65,14 +65,16 @@ const HomeScreen: React.FC<Props> = ({ lang, services, onNavigate, onServiceSele
               onClick={() => onServiceSelect(service)}
               className="min-w-[160px] group relative bg-white rounded-[25px] border-2 border-slate-50 shadow-md overflow-hidden active:scale-95 transition-all"
             >
-              <img 
+              <img
                 src={
-                  service.imageUrl 
-                    ? (service.imageUrl.startsWith('http') ? service.imageUrl : `${import.meta.env.VITE_API_URL || ''}/${service.imageUrl}`)
+                  service.imageUrl
+                    ? (service.imageUrl.startsWith('http')
+                        ? service.imageUrl
+                        : `${(import.meta.env.VITE_API_URL || '').replace(/\/$/, '')}/${service.imageUrl.replace(/^\/+/, '')}`)
                     : (service.thumbnail || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="160" height="128"%3E%3Crect fill="%23f1f5f9" width="160" height="128"/%3E%3C/svg%3E')
                 }
-                alt={typeof service.name === 'object' ? service.name[lang] : service.name || 'Service'} 
-                className="w-full h-32 object-cover" 
+                alt={typeof service.name === 'object' ? service.name[lang] : service.name || 'Service'}
+                className="w-full h-32 object-cover"
               />
               <div className="p-4 space-y-1">
                 <p className="text-sm font-bold text-slate-800">{typeof service.name === 'object' ? service.name[lang] : service.name}</p>

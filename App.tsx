@@ -730,8 +730,8 @@ const App: React.FC = () => {
                   <ArrowLeft size={20} />
                 </button>
               )}
-              <h1 className="text-xl font-bold text-slate-800 tracking-tight">
-                {view === 'main' ? 'Princess' : view === 'admin' ? 'Admin Panel' : t.serviceDetails}
+              <h1 className="brand-heading navbar-brand font-extrabold tracking-tight">
+                <span className="brand-color">{view === 'main' ? 'Princess' : view === 'admin' ? 'Admin Panel' : t.serviceDetails}</span>
               </h1>
             </div>
             
