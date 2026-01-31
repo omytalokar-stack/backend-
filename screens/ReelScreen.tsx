@@ -60,15 +60,15 @@ const ReelScreen: React.FC<Props> = ({ lang, services, onBook, getDisplayRate })
   }
 
   return (
-    <div className="h-full snap-y snap-mandatory overflow-y-auto no-scrollbar bg-black">
+    <div className="h-full snap-y-mandatory scroll-smooth overflow-y-scroll no-scrollbar bg-black" style={{ scrollBehavior: 'smooth', scrollSnapType: 'y mandatory' }}>
       {validReels.map((service, idx) => (
-        <ReelItem key={`${(service as any)._id || service.id}-${idx}`} service={service} lang={lang} t={t} onBook={onBook} isActive={idx === 0} getDisplayRate={getDisplayRate} />
+        <ReelItem key={`${(service as any)._id || service.id}-${idx}`} service={service} lang={lang} t={t} onBook={onBook} getDisplayRate={getDisplayRate} />
       ))}
     </div>
   );
 };
 
-const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s: Service) => void; isActive: boolean; getDisplayRate?: (service: Service) => string }> = ({ service, lang, t, onBook, isActive, getDisplayRate }) => {
+const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s: Service) => void; getDisplayRate?: (service: Service) => string }> = ({ service, lang, t, onBook, getDisplayRate }) => {
   const [liked, setLiked] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [commentInput, setCommentInput] = useState('');
@@ -76,25 +76,65 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
     const raw = localStorage.getItem(`comments:${service.id}`);
     return raw ? JSON.parse(raw) : [];
   });
+  const [isMuted, setIsMuted] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  // Pause video when this component is unmounted or when it becomes inactive
+  // Use Intersection Observer to auto-play when 50%+ visible
   React.useEffect(() => {
-    if (isActive) {
-      try { videoRef.current?.play(); } catch {}
-    } else {
-      try { videoRef.current?.pause(); } catch {}
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
+          // At least 50% visible
+          try {
+            if (videoRef.current) {
+              videoRef.current.muted = true;
+              videoRef.current.play().catch(() => {});
+            }
+          } catch {}
+        } else {
+          // Less than 50% visible or out of view
+          try {
+            if (videoRef.current) {
+              videoRef.current.pause();
+              videoRef.current.currentTime = 0;
+            }
+          } catch {}
+        }
+      },
+      { threshold: [0.5] } // Trigger when 50% is visible
+    );
+
+    if (containerRef.current) {
+      observer.observe(containerRef.current);
     }
+
+    return () => {
+      if (containerRef.current) {
+        observer.unobserve(containerRef.current);
+      }
+    };
+  }, []);
+
+  // Handle unmute on user interaction
+  const handleUnmute = () => {
+    if (videoRef.current) {
+      videoRef.current.muted = false;
+      setIsMuted(false);
+    }
+  };
+
+  // Cleanup on unmount
+  React.useEffect(() => {
     return () => {
       try {
         if (videoRef.current) {
           videoRef.current.pause();
-          // clear source to release memory
-          videoRef.current.src = '';
+          videoRef.current.currentTime = 0;
         }
       } catch {}
     };
-  }, [isActive]);
+  }, []);
 
   const handleSaveReel = async () => {
     const token = localStorage.getItem('token');
@@ -146,22 +186,27 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
   };
 
   return (
-    <div className="h-full w-full snap-start relative bg-black flex items-center justify-center">
+    <div className="h-full w-full snap-start relative bg-black flex items-center justify-center" ref={containerRef} style={{ scrollSnapAlign: 'start' }}>
       <video 
         ref={videoRef}
         src={service.videoUrl} 
         className="h-full w-full object-cover opacity-80"
-        loop 
-        autoPlay={isActive}
-        controls
+        loop
+        muted={isMuted}
         playsInline
       />
+      {/* Mute/Unmute toggle */}
+      {isMuted && (
+        <button onClick={handleUnmute} className="absolute top-6 right-6 z-20 px-4 py-2 bg-white/80 text-slate-800 font-bold rounded-[20px] active:scale-95 transition-all text-sm">
+          🔊 Unmute
+        </button>
+      )}
       
       {/* Overlays */}
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/60 pointer-events-none" />
 
       {/* Interactions */}
-      <div className="absolute right-2 bottom-20 flex flex-col gap-3 items-center">
+      <div className="absolute right-2 bottom-20 flex flex-col gap-3 items-center z-10">
         <InteractionButton 
           icon={<Heart size={24} fill={liked ? '#FFB7C5' : 'none'} className={liked ? 'text-[#FFB7C5]' : 'text-white'} />} 
           label={t.like}
