@@ -4,7 +4,7 @@ import { translations } from '../translations';
 import { Service, Language, Order } from '../types';
 import { MapPin, User, Calendar, CreditCard } from 'lucide-react';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_BASE = import.meta.env.VITE_API_URL || '';
 
 interface Props {
   service: Service;
@@ -28,7 +28,7 @@ const BookingPage: React.FC<Props> = ({ service, lang, onConfirm, getDisplayRate
   const [slots, setSlots] = useState<{ label: string; startHour: number; endHour: number }[]>([]);
   useEffect(() => {
     const token = localStorage.getItem('token');
-    const date = new Date().toISOString().slice(0, 10);
+    const date = formData.date; // use selected date
     const id = (service as any)._id || service.id;
     
     if (!token || !id) {
@@ -85,7 +85,7 @@ const BookingPage: React.FC<Props> = ({ service, lang, onConfirm, getDisplayRate
           { label: '6:00 PM - 7:00 PM', startHour: 18, endHour: 19 }
         ]);
       });
-  }, [service]);
+  }, [service, formData.date]);
 
   return (
     <div className="p-6 space-y-8 animate-in slide-in-from-bottom-8 duration-300">
@@ -121,6 +121,19 @@ const BookingPage: React.FC<Props> = ({ service, lang, onConfirm, getDisplayRate
               className="w-full pl-14 pr-6 py-4 bg-slate-50 border-2 border-transparent focus:border-[#E0F2F1] focus:bg-white rounded-[30px] outline-none transition-all font-bold"
               value={formData.address}
               onChange={(e) => setFormData({...formData, address: e.target.value})}
+            />
+          </div>
+        </div>
+
+        {/* Date Picker */}
+        <div className="space-y-2">
+          <label className="text-xs font-black uppercase text-slate-400 ml-4">Date</label>
+          <div className="relative">
+            <input
+              type="date"
+              className="w-full pl-6 pr-6 py-4 bg-slate-50 border-2 border-transparent focus:border-[#E0F2F1] focus:bg-white rounded-[30px] outline-none transition-all font-bold"
+              value={formData.date}
+              onChange={(e) => setFormData({ ...formData, date: e.target.value })}
             />
           </div>
         </div>

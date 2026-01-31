@@ -18,7 +18,8 @@ router.get('/available', authenticateToken, async (req, res) => {
     }
     if (!service) return res.status(404).json({ error: 'Service not found' });
     const duration = Math.max(1, Math.round(service.durationMinutes / 60));
-    const bookings = await Booking.find({ serviceId, date });
+    // For a single worker setup we must consider bookings across all services
+    const bookings = await Booking.find({ date });
     const blocked = new Set();
     bookings.forEach(b => {
       for (let h = b.startHour; h < b.endHour; h++) blocked.add(h);
@@ -56,8 +57,9 @@ router.post('/', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Invalid slot. Bookings allowed between 13:00 and 19:00 only' });
     }
     // Check for double booking - no past time restriction
-    const clashes = await Booking.findOne({ serviceId, date, startHour: { $lt: endHour }, endHour: { $gt: startHour } });
-    if (clashes) return res.status(400).json({ error: 'Slot already booked' });
+    // Check for any overlapping booking on the same date (single worker constraint)
+    const clashes = await Booking.findOne({ date, startHour: { $lt: endHour }, endHour: { $gt: startHour } });
+    if (clashes) return res.status(400).json({ error: 'This slot is already booked.' });
     const b = await Booking.create({ userId: req.user.userId, serviceId, date, startHour, endHour, status: 'Pending' });
     console.log('✅ Booking created:', b._id);
     res.json(b);

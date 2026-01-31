@@ -31,7 +31,7 @@ const ProfileScreen: React.FC<Props> = ({ lang, onLogout, onViewAllOffers, onNot
       picture: fallbackUser.picture
     });
     if (token) {
-      const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const API_BASE = import.meta.env.VITE_API_URL || '';
       fetch(`${API_BASE}/api/auth/me`, {
         headers: { Authorization: `Bearer ${token}` },
         credentials: 'include'
@@ -66,7 +66,7 @@ const ProfileScreen: React.FC<Props> = ({ lang, onLogout, onViewAllOffers, onNot
     }
 
     try {
-      const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const API_BASE = import.meta.env.VITE_API_URL || '';
       const response = await fetch(`${API_BASE}/api/auth/update-name`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },

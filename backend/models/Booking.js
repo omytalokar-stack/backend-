@@ -9,4 +9,7 @@ const bookingSchema = new mongoose.Schema({
   status: { type: String, enum: ['Pending', 'Done'], default: 'Pending' },
 }, { timestamps: true });
 
+// Index to speed up overlapping-slot queries (non-unique; overlap logic handled in app)
+bookingSchema.index({ date: 1, startHour: 1, endHour: 1 });
+
 module.exports = mongoose.model('Booking', bookingSchema);

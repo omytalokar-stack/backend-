@@ -3,7 +3,7 @@ import { translations } from '../translations';
 import { Language } from '../types';
 import { Gift, CheckCircle, AlertTriangle } from 'lucide-react';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_BASE = import.meta.env.VITE_API_URL || '';
 
 interface Props {
   lang: Language;

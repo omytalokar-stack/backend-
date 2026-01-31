@@ -6,12 +6,12 @@
 // Get API base URL from environment variable
 // CRITICAL: This must use VITE_API_URL from .env
 export const getAPIBase = (): string => {
-  const envURL = import.meta.env.VITE_API_URL;
+  const envURL = import.meta.env.VITE_API_URL || '';
   if (!envURL) {
-    console.warn('⚠️ VITE_API_URL not set in environment, falling back to localhost');
-    return 'http://localhost:5000';
+    console.warn('⚠️ VITE_API_URL not set in environment; using relative paths for API calls');
+  } else {
+    console.log('✅ Using API URL:', envURL);
   }
-  console.log('✅ Using API URL:', envURL);
   return envURL;
 };
 
