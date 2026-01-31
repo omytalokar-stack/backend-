@@ -160,41 +160,34 @@ const BookingPage: React.FC<Props> = ({ service, lang, onConfirm, getDisplayRate
                     setFormData({ ...formData, slot: '', startHour: 0, endHour: 0 });
                   }
                 }
-                return filtered.map(s => (
-                  <button
-                    key={s.label}
-                    onClick={() => setFormData({...formData, slot: s.label, startHour: s.startHour, endHour: s.endHour})}
-                    className={`px-5 py-2.5 rounded-[30px] font-bold text-sm transition-all border-2 ${
-                      formData.slot === s.label 
-                        ? 'bg-[#FFB7C5] text-white border-[#FFB7C5] shadow-md scale-105' 
-                        : 'bg-white text-slate-600 border-slate-100 hover:border-pink-200'
-                    }`}
-                  >
-                    {s.label}
-                  </button>
-                ));
-              })()}
-            </div>
-        </div>
-
-        {/* COD Toggle */}
-        <div className="p-5 bg-[#FFF9C4]/30 rounded-[30px] border-2 border-[#FFF9C4] flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <CreditCard className="text-yellow-600" />
-            <div>
-              <p className="font-bold text-slate-800">{t.cod}</p>
-              <p className="text-[10px] uppercase font-black text-yellow-700/60">Pay after service</p>
-            </div>
-          </div>
-          <button 
-            onClick={() => setFormData({...formData, cod: !formData.cod})}
-            className={`w-14 h-8 rounded-full transition-all relative ${formData.cod ? 'bg-yellow-500' : 'bg-slate-300'}`}
-          >
-            <div className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-all ${formData.cod ? 'left-7' : 'left-1'}`} />
-          </button>
-        </div>
-
-        {/* Summary */}
+              return (
+                <>
+                  {isToday && filtered.length < slots.length && (
+                    <div className="w-full text-xs text-amber-600 bg-amber-50 p-2.5 rounded-[12px] font-semibold">
+                      ⏰ Past time slots are hidden for today. Only future slots are available.
+                    </div>
+                  )}
+                  {filtered.length === 0 ? (
+                    <div className="w-full text-center py-4 text-slate-500 text-sm font-semibold">
+                      No available slots for this date
+                    </div>
+                  ) : (
+                    filtered.map(s => (
+                      <button
+                        key={s.label}
+                        onClick={() => setFormData({...formData, slot: s.label, startHour: s.startHour, endHour: s.endHour})}
+                        className={`px-5 py-2.5 rounded-[30px] font-bold text-sm transition-all border-2 ${
+                          formData.slot === s.label 
+                            ? 'bg-[#FFB7C5] text-white border-[#FFB7C5] shadow-md scale-105' 
+                            : 'bg-white text-slate-600 border-slate-100 hover:border-pink-200'
+                        }`}
+                      >
+                        {s.label}
+                      </button>
+                    ))
+                  )}
+                </>
+              );
         <div className="p-6 bg-slate-50 rounded-[30px] space-y-3">
           <div className="flex justify-between text-slate-500 font-bold uppercase text-[10px]">
             <span>Service Total</span>

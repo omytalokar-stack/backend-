@@ -25,8 +25,13 @@ router.get('/available', authenticateToken, async (req, res) => {
       for (let h = b.startHour; h < b.endHour; h++) blocked.add(h);
     });
     const slots = [];
+    // Get current time to filter past slots
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+    const currentHour = now.getHours();
+    const isToday = date === today;
+    
     // Generate all slots from 1 PM to 7 PM (13:00-19:00)
-    // No time restriction - user can book anytime, slots always available unless booked
     HOURS_START.forEach(h => {
       const end = h + duration;
       if (end > 19) return; // ensure end time within 19:00
@@ -35,9 +40,15 @@ router.get('/available', authenticateToken, async (req, res) => {
       for (let k = h; k < end; k++) {
         if (blocked.has(k)) { ok = false; break; }
       }
-      // Show slot if available (not booked), regardless of current time
+      // Filter out past slots if selecting today
+      if (isToday && h <= currentHour) {
+        console.log(`⏭️ Skipping past slot for today: ${h}:00 (current hour: ${currentHour})`);
+        return;
+      }
+      // Show slot if available (not booked)
       if (ok) slots.push({ startHour: h, endHour: end, label: `${h}:00-${end}:00` });
     });
+    console.log(`✅ Returned ${slots.length} available slots for ${date}`);
     res.json({ slots });
   } catch (err) {
     console.error('❌ Error fetching available slots:', err.message);
@@ -56,8 +67,16 @@ router.post('/', authenticateToken, async (req, res) => {
     if (startHour < 13 || startHour > 18 || endHour <= startHour || endHour > 19) {
       return res.status(400).json({ error: 'Invalid slot. Bookings allowed between 13:00 and 19:00 only' });
     }
-    // Check for double booking - no past time restriction
-    // Check for any overlapping booking on the same date (single worker constraint)
+
+    // Reject bookings for past time slots
+    const now = new Date();
+    const bookingDateTime = new Date(`${date}T${String(startHour).padStart(2, '0')}:00:00`);
+    if (bookingDateTime < now) {
+      console.warn('⚠️ Attempted booking for past time:', { date, startHour, now: now.toISOString() });
+      return res.status(400).json({ error: 'Cannot book for past time. Please select a future slot.' });
+    }
+
+    // Check for double booking - no overlapping on the same date (single worker constraint)
     const clashes = await Booking.findOne({ date, startHour: { $lt: endHour }, endHour: { $gt: startHour } });
     if (clashes) return res.status(400).json({ error: 'This slot is already booked.' });
     const b = await Booking.create({ userId: req.user.userId, serviceId, date, startHour, endHour, status: 'Pending' });

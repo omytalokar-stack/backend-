@@ -268,7 +268,7 @@ const OrderManager: React.FC = () => {
                       <div className="font-bold text-slate-800 text-sm truncate">{userLabel(o.userId)}</div>
                       <div className="text-xs text-slate-500 line-clamp-2">{nameByService(o.serviceId)}</div>
                     </div>
-                    <span className={`px-2.5 py-1.5 rounded-[10px] text-xs font-black whitespace-nowrap ${o.status === 'Done' ? 'bg-teal-100 text-teal-700' : o.status === 'Scheduled' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'}`}>{o.status}</span>
+                    <span className={`px-2.5 py-1.5 rounded-[10px] text-xs font-black whitespace-nowrap ${o.status === 'Completed' ? 'bg-green-100 text-green-700' : o.status === 'Done' ? 'bg-teal-100 text-teal-700' : o.status === 'Scheduled' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'}`}>{o.status}</span>
                   </div>
                   <div className="text-xs text-slate-600 bg-slate-50 p-2.5 rounded-[10px]">
                     📅 {o.date} • 🕐 {labelTime(o)}

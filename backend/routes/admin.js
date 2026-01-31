@@ -306,18 +306,30 @@ router.get('/orders', authenticateToken, ensureAdmin, async (req, res) => {
     const list = await Booking.find()
       .sort({ createdAt: -1 });
     
-    // Don't populate - return raw IDs so frontend can lookup
-    const safe = list.map(b => ({
-      _id: b._id,
-      userId: b.userId,
-      serviceId: b.serviceId,
-      date: b.date || '',
-      startHour: b.startHour || 0,
-      endHour: b.endHour || 0,
-      status: b.status || 'Pending',
-      createdAt: b.createdAt,
-      updatedAt: b.updatedAt
-    }));
+    const now = new Date();
+    // Auto-complete orders where end time has passed
+    const safe = list.map(b => {
+      let status = b.status || 'Pending';
+      // If status is Pending and booking end time has passed, mark as Completed
+      if (status === 'Pending' && b.date && b.endHour != null) {
+        const endDateTime = new Date(`${b.date}T${String(b.endHour).padStart(2, '0')}:00:00`);
+        if (endDateTime < now) {
+          status = 'Completed';
+          console.log(`✅ Auto-completed order ${b._id}: end time ${b.date} ${b.endHour}:00 has passed`);
+        }
+      }
+      return {
+        _id: b._id,
+        userId: b.userId,
+        serviceId: b.serviceId,
+        date: b.date || '',
+        startHour: b.startHour || 0,
+        endHour: b.endHour || 0,
+        status: status,
+        createdAt: b.createdAt,
+        updatedAt: b.updatedAt
+      };
+    });
     
     console.log(`✅ Orders found: ${safe.length}`);
     res.json(safe || []);
