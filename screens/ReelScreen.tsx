@@ -2,7 +2,7 @@
 import React, { useRef, useState } from 'react';
 import { translations } from '../translations';
 import { Service, Language } from '../types';
-import { Heart, MessageCircle, Bookmark, Gift, Play } from 'lucide-react';
+import { Heart, MessageCircle, Bookmark, Gift, Play, X } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
@@ -10,10 +10,11 @@ interface Props {
   lang: Language;
   services: Service[];
   onBook: (service: Service) => void;
+  onClose?: () => void;
   getDisplayRate?: (service: Service) => string;
 }
 
-const ReelScreen: React.FC<Props> = ({ lang, services, onBook, getDisplayRate }) => {
+const ReelScreen: React.FC<Props> = ({ lang, services, onBook, onClose, getDisplayRate }) => {
   const t = translations[lang];
   
   // Check for sessionStorage reels (from saved reels click)
@@ -60,7 +61,18 @@ const ReelScreen: React.FC<Props> = ({ lang, services, onBook, getDisplayRate })
   }
 
   return (
-    <div className="h-full snap-y-mandatory scroll-smooth overflow-y-scroll no-scrollbar bg-black" style={{ scrollBehavior: 'smooth', scrollSnapType: 'y mandatory' }}>
+    <div className="h-full snap-y-mandatory scroll-smooth overflow-y-scroll no-scrollbar bg-black relative" style={{ scrollBehavior: 'smooth', scrollSnapType: 'y mandatory' }}>
+      {/* Close button */}
+      {onClose && (
+        <button
+          onClick={onClose}
+          className="fixed top-6 right-6 z-50 bg-white/20 hover:bg-white/40 backdrop-blur-sm text-white p-2.5 rounded-full transition-all active:scale-95"
+          title="Close reels"
+        >
+          <X size={24} />
+        </button>
+      )}
+      
       {validReels.map((service, idx) => (
         <ReelItem key={`${(service as any)._id || service.id}-${idx}`} service={service} lang={lang} t={t} onBook={onBook} getDisplayRate={getDisplayRate} />
       ))}

@@ -67,10 +67,8 @@ const mockServices: Service[] = [
 const App: React.FC = () => {
   const [lang, setLang] = useState<Language>('en');
   const [theme, setTheme] = useState<'pastel' | 'dark'>(() => (localStorage.getItem('theme') as any) || 'pastel');
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
-    // Check if user is already logged in
-    return !!sessionStorage.getItem('loggedIn') && !!localStorage.getItem('token');
-  });
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState<boolean>(true); // Track auth check in progress
   const [isNewUser, setIsNewUser] = useState<boolean>(() => {
     return localStorage.getItem('isNewUser') === 'true';
   });
@@ -119,6 +117,22 @@ const App: React.FC = () => {
       document.body.classList.remove('dark');
     }
   }, [theme]);
+
+  // Check for persistent auth token on app load
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    const user = localStorage.getItem('user');
+    
+    if (token && user) {
+      console.log('✅ Token found in localStorage, restoring session...');
+      setIsLoggedIn(true);
+      setIsCheckingAuth(false);
+    } else {
+      console.log('⚠️ No token found, user needs to login');
+      setIsLoggedIn(false);
+      setIsCheckingAuth(false);
+    }
+  }, []);
 
   // Fetch services from database on app load
   useEffect(() => {
@@ -199,9 +213,10 @@ const App: React.FC = () => {
   };
 
   const handleLoginSuccess = (isNew: boolean = false) => {
+    // Token should already be in localStorage from LoginScreen
+    console.log('✅ Login successful, token is persisted in localStorage');
     setIsLoggedIn(true);
     setIsNewUser(isNew);
-    sessionStorage.setItem('loggedIn', 'true');
     if (isNew) {
       localStorage.setItem('isNewUser', 'true');
     } else {
@@ -220,10 +235,16 @@ const App: React.FC = () => {
   };
 
   const handleLogout = () => {
+    console.log('🚪 Logging out...');
     setIsLoggedIn(false);
-    localStorage.clear();
+    // Clear all auth-related data
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('isNewUser');
     sessionStorage.clear();
-    window.location.replace('/login');
+    // Redirect to home to show login screen
+    setView('main');
+    setActiveTab('home');
   };
 
   const handleServiceSelect = (service: Service) => {
@@ -323,6 +344,18 @@ const App: React.FC = () => {
   };
 
   const renderContent = () => {
+    // Show loading while checking auth
+    if (isCheckingAuth) {
+      return (
+        <div className="w-full h-screen flex items-center justify-center bg-gradient-to-br from-pink-50 to-purple-50">
+          <div className="text-center space-y-4">
+            <div className="text-4xl font-black text-transparent bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text">👑 Princess</div>
+            <div className="text-slate-600 font-semibold">Loading your session...</div>
+          </div>
+        </div>
+      );
+    }
+    
     // Show login screen if not logged in
     if (!isLoggedIn) {
       return <LoginScreen lang={lang} onLanguageChange={setLang} onLoginSuccess={handleLoginSuccess} />;
@@ -678,7 +711,7 @@ const App: React.FC = () => {
               baseRate: 0
             }));
           }
-          return <ReelScreen lang={lang} services={reelServices} onBook={handleServiceSelect} getDisplayRate={getDisplayRate} />;
+          return <ReelScreen lang={lang} services={reelServices} onBook={handleServiceSelect} onClose={() => setActiveTab('home')} getDisplayRate={getDisplayRate} />;
         }
       case 'trending':
         // Sort by click counts
