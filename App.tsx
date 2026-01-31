@@ -731,7 +731,7 @@ const App: React.FC = () => {
                 </button>
               )}
               <h1 className="text-xl font-bold text-slate-800 tracking-tight">
-                {view === 'main' ? 'PastelService' : view === 'admin' ? 'Admin Panel' : t.serviceDetails}
+                {view === 'main' ? 'Princess' : view === 'admin' ? 'Admin Panel' : t.serviceDetails}
               </h1>
             </div>
             

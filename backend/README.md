@@ -1,4 +1,4 @@
-# Pastel Service - Booking App Backend
+# Princess - Booking App Backend
 
 ## Setup Instructions
 

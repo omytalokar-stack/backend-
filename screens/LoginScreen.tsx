@@ -107,7 +107,7 @@ const LoginScreen: React.FC<Props> = ({ lang, onLanguageChange, onLoginSuccess }
           <div className="inline-block p-4 bg-gradient-to-br from-pink-100 to-teal-100 rounded-[30px] shadow-lg">
             <span className="text-4xl">✨</span>
           </div>
-          <h1 className="text-4xl font-black text-slate-800 tracking-tight">PastelService</h1>
+          <h1 className="text-4xl font-black text-slate-800 tracking-tight">Princess</h1>
           <p className="text-slate-500 font-bold">{lang === 'en' ? 'Your beauty, our passion 💄' : 'आपकी सुंदरता, हमारा जुनून 💄'}</p>
         </div>
 
@@ -123,7 +123,7 @@ const LoginScreen: React.FC<Props> = ({ lang, onLanguageChange, onLoginSuccess }
           {/* Welcome Message */}
           <div className="text-center space-y-2">
             <p className="text-sm font-black text-slate-700 uppercase tracking-wider">
-              {lang === 'en' ? 'Welcome to PastelService' : 'PastelService में स्वागत है'}
+              {lang === 'en' ? 'Welcome to Princess' : 'Princess में स्वागत है'}
             </p>
             <p className="text-xs text-slate-500 font-bold">
               {lang === 'en' ? 'Sign in with your Google account' : 'अपने Google खाते से साइन इन करें'}

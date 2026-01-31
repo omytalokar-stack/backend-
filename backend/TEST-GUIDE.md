@@ -1,4 +1,4 @@
-# Pastel Service Backend - Quick Test Guide
+# Princess Backend - Quick Test Guide
 
 ## Testing the API
 
