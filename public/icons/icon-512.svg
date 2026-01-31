@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="100%" height="100%" fill="#fff"/>
+  <circle cx="256" cy="170" r="100" fill="#D4AF37" />
+  <path d="M128 360c48-60 120-84 144-84s96 24 144 84v40H128v-40z" fill="#FFB7C5" />
+  <text x="256" y="440" font-family="Playfair Display, serif" font-size="42" text-anchor="middle" fill="#8B5E3C">Princess</text>
+</svg>
