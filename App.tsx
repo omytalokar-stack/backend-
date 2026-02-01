@@ -96,6 +96,9 @@ const App: React.FC = () => {
   const [servicesLoaded, setServicesLoaded] = useState(false);
   const [publicReels, setPublicReels] = useState<any[]>([]);
   const [navigationHistory, setNavigationHistory] = useState<Array<{ view: string; activeTab: string }>>([]);
+  const [playedOpeningSound, setPlayedOpeningSound] = useState<boolean>(() => {
+    return localStorage.getItem('hasPlayedOpeningSound') === 'true';
+  });
 
   const t = translations[lang];
   const isAdminUser = useMemo(() => {
@@ -134,6 +137,27 @@ const App: React.FC = () => {
       setIsCheckingAuth(false);
     }
   }, []);
+
+  // Play opening sound on first app load and sync with animation
+  useEffect(() => {
+    if (isCheckingAuth === false && !playedOpeningSound) {
+      const timer = setTimeout(() => {
+        try {
+          const audio = new Audio('/sounds/app-opening.mp3');
+          audio.volume = 0.5; // 50% volume
+          audio.play().catch(err => {
+            console.log('🔇 Sound disabled or not available:', err);
+          });
+          setPlayedOpeningSound(true);
+          localStorage.setItem('hasPlayedOpeningSound', 'true');
+        } catch (err) {
+          console.error('❌ Error playing opening sound:', err);
+        }
+      }, 100); // Small delay to ensure DOM is ready
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isCheckingAuth, playedOpeningSound]);
 
   // Intercept browser back button to prevent app exit
   useEffect(() => {
@@ -388,10 +412,41 @@ const App: React.FC = () => {
     // Show loading while checking auth
     if (isCheckingAuth) {
       return (
-        <div className="w-full h-screen flex items-center justify-center bg-gradient-to-br from-pink-50 to-purple-50">
+        <div className="w-full h-screen flex items-center justify-center bg-gradient-to-br from-pink-50 to-purple-50 overflow-hidden">
+          <style>{`
+            @keyframes slideInDown {
+              from {
+                opacity: 0;
+                transform: translateY(-40px);
+              }
+              to {
+                opacity: 1;
+                transform: translateY(0);
+              }
+            }
+            
+            @keyframes pulse-glow {
+              0%, 100% {
+                box-shadow: 0 0 20px rgba(236, 72, 153, 0.3);
+              }
+              50% {
+                box-shadow: 0 0 40px rgba(236, 72, 153, 0.6);
+              }
+            }
+            
+            .app-logo-opening {
+              animation: slideInDown 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), pulse-glow 1.2s ease-in-out 0.6s;
+            }
+            
+            .loading-text {
+              animation: slideInDown 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both;
+            }
+          `}</style>
           <div className="text-center space-y-4">
-            <div className="text-4xl font-black text-transparent bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text">👑 Princess</div>
-            <div className="text-slate-600 font-semibold">Loading your session...</div>
+            <div className="app-logo-opening text-5xl font-black text-transparent bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text px-6 py-3">
+              👑 Princess
+            </div>
+            <div className="loading-text text-slate-600 font-semibold">Loading your session...</div>
           </div>
         </div>
       );
