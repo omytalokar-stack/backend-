@@ -11,6 +11,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const cloudinary = require('cloudinary').v2;
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
 
 // Configure Cloudinary from CLOUDINARY_URL or individual env vars
 if (process.env.CLOUDINARY_URL) {
@@ -23,34 +24,27 @@ if (process.env.CLOUDINARY_URL) {
   });
 }
 
-// Upload configuration - same as server.js
+// Upload configuration
 const uploadsDir = path.join(__dirname, '../uploads');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadsDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
-});
-
-const upload = multer({ 
-  storage: storage,
-  limits: { fileSize: 100 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => {
-    const allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'video/mp4', 'video/quicktime'];
-    if (allowedMimes.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error(`Invalid file type: ${file.mimetype}`));
-    }
-  }
-});
+let upload;
+if (cloudinary.config().cloud_name) {
+  // Use memory storage and upload via Cloudinary upload_stream to avoid local files
+  upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100 * 1024 * 1024 } });
+  console.log('✅ Using Cloudinary uploader (memory storage) for uploads');
+} else {
+  // If Cloudinary not configured, do NOT fall back to local uploads for safety.
+  console.error('❌ Cloudinary not configured. Set CLOUDINARY_URL or CLOUDINARY_* env vars to enable persistent uploads. Local storage is disabled to avoid data loss.');
+  // Provide a dummy multer that always errors so uploads fail loudly
+  upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 100 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => cb(new Error('Cloudinary not configured'))
+  });
+}
 
 // TEMP: Seed endpoint (no auth) - for testing/development only
 router.post('/seed', authenticateToken, ensureAdmin, async (req, res) => {
@@ -171,30 +165,30 @@ router.post('/upload', authenticateToken, ensureAdmin, upload.single('file'), as
       console.error('❌ No file in request');
       return res.status(400).json({ error: 'No file provided' });
     }
-    // Upload to Cloudinary so files persist across deploys
-    if (!cloudinary.config().cloud_name) {
-      // Cloudinary not configured - fallback to returning local URL but log prominently
-      const baseUrl = process.env.BACKEND_URL || `${req.protocol}://${req.get('host')}`;
-      const fileUrl = `${baseUrl}/uploads/${req.file.filename}`;
-      console.warn('⚠️ Cloudinary not configured. Returning local uploads path:', fileUrl);
-      return res.json({ url: fileUrl, filename: req.file.filename, originalName: req.file.originalname, size: req.file.size, mimetype: req.file.mimetype });
+    // If Cloudinary is configured we expect a buffer from multer.memoryStorage
+    if (req.file && req.file.buffer && cloudinary.config().cloud_name) {
+      // Upload via stream to Cloudinary
+      const streamifier = require('streamifier');
+      const folder = process.env.CLOUDINARY_FOLDER || 'pastelservice';
+      const uploadStream = cloudinary.uploader.upload_stream(
+        { folder, resource_type: 'auto' },
+        (error, result) => {
+          if (error) {
+            console.error('❌ Cloudinary upload_stream error:', error && error.message);
+            return res.status(500).json({ error: 'Cloudinary upload failed', details: error && error.message });
+          }
+          const url = result.secure_url || result.url;
+          console.log(`✅ Upload successful to Cloudinary: ${url}`);
+          return res.json({ url, public_id: result.public_id, originalName: req.file.originalname, size: req.file.size, mimetype: req.file.mimetype });
+        }
+      );
+      streamifier.createReadStream(req.file.buffer).pipe(uploadStream);
+      return; // response will be sent from callback
     }
 
-    try {
-      const result = await cloudinary.uploader.upload(req.file.path, { resource_type: 'auto', folder: process.env.CLOUDINARY_FOLDER || 'pastelservice' });
-      // Remove local temp file
-      fs.unlink(req.file.path, (uerr) => {
-        if (uerr) console.warn('⚠️ Failed to remove temp upload file:', uerr.message);
-      });
-      console.log(`✅ Upload successful to Cloudinary: ${result.secure_url}`);
-      return res.json({ url: result.secure_url, public_id: result.public_id, originalName: req.file.originalname, size: req.file.size, mimetype: req.file.mimetype });
-    } catch (cErr) {
-      console.error('❌ Cloudinary upload failed:', cErr.message);
-      // As a last resort, return local file URL but mark error
-      const baseUrl = process.env.BACKEND_URL || `${req.protocol}://${req.get('host')}`;
-      const fileUrl = `${baseUrl}/uploads/${req.file.filename}`;
-      return res.status(500).json({ error: 'Cloudinary upload failed', details: cErr.message, fallbackUrl: fileUrl });
-    }
+    // Cloudinary not configured or no file buffer
+    console.error('❌ Upload failed: Cloudinary not configured or no file provided');
+    return res.status(500).json({ error: 'Upload failed - Cloudinary not configured or no file' });
   } catch (e) {
     console.error('❌ Upload error:', e.message);
     console.error('Stack:', e.stack);
