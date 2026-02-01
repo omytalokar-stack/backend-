@@ -44,9 +44,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// Serve uploaded files as static files
-app.use('/uploads', express.static(uploadsDir));
-
 // MongoDB Connection
 // Support either a full MONGODB_URI / DATABASE_URL or building it from parts
 const MONGODB_URI = process.env.MONGODB_URI || process.env.DATABASE_URL || (() => {
