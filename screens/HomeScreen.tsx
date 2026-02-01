@@ -75,6 +75,10 @@ const HomeScreen: React.FC<Props> = ({ lang, services, onNavigate, onServiceSele
                 }
                 alt={typeof service.name === 'object' ? service.name[lang] : service.name || 'Service'}
                 className="w-full h-32 object-cover"
+                onError={(e) => {
+                  const el = e.currentTarget as HTMLImageElement;
+                  el.src = service.thumbnail || '/icons/icon-192.svg';
+                }}
               />
               <div className="p-4 space-y-1">
                 <p className="text-sm font-bold text-slate-800">{typeof service.name === 'object' ? service.name[lang] : service.name}</p>

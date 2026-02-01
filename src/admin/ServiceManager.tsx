@@ -233,7 +233,7 @@ const ServiceManager: React.FC<{ showFormDefault?: boolean }> = ({ showFormDefau
         {services.map(s => (
           <div key={s._id} className="p-4 rounded-2xl border border-slate-200 space-y-3 bg-white shadow-sm hover:shadow-md transition-shadow">
             <div className="flex gap-3">
-              <img src={s.imageUrl || 'https://picsum.photos/seed/service/80/80'} className="w-16 h-16 rounded-[12px] object-cover flex-shrink-0" />
+              <img src={s.imageUrl || 'https://picsum.photos/seed/service/80/80'} className="w-16 h-16 rounded-[12px] object-cover flex-shrink-0" onError={(e) => { (e.currentTarget as HTMLImageElement).src = 'https://picsum.photos/seed/service/80/80'; }} />
               <div className="flex-1 min-w-0">
                 <div className="font-bold text-slate-800 text-sm line-clamp-1">{s.name}</div>
                 <div className="text-xs text-slate-500">₹{Math.round(s.baseRate)} • {Math.round(s.durationMinutes)}m</div>

@@ -41,7 +41,7 @@ const TrendingScreen: React.FC<Props> = ({ lang, services, onSelect, getDisplayR
                 src={thumbUrl} 
                 alt={typeof service.name === 'object' ? service.name[lang] : 'Service'} 
                 className="w-full h-full object-cover" 
-                onError={(e) => (e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="160" height="180"%3E%3Crect fill="%23f1f5f9" width="160" height="180"/%3E%3C/svg%3E')}
+                onError={(e) => { (e.currentTarget as HTMLImageElement).src = (service as any).thumbnail || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="160" height="180"%3E%3Crect fill="%23f1f5f9" width="160" height="180"/%3E%3C/svg%3E'; }}
               />
               <div className="absolute top-2 left-2 w-7 h-7 bg-white rounded-full flex items-center justify-center font-black text-slate-800 text-sm shadow-sm border-2 border-slate-50">
                 {idx + 1}

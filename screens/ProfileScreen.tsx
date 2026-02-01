@@ -115,6 +115,7 @@ const ProfileScreen: React.FC<Props> = ({ lang, onLogout, onViewAllOffers, onNot
             src={profile.avatarUrl || profile.picture || 'https://picsum.photos/seed/user/200/200'} 
             alt="Profile" 
             className="w-32 h-32 rounded-full border-4 border-[#FFB7C5] shadow-xl object-cover"
+            onError={(e) => { (e.currentTarget as HTMLImageElement).src = 'https://picsum.photos/seed/user/200/200'; }}
           />
           <label className="absolute bottom-1 right-1 p-2 bg-[#E0F2F1] rounded-full shadow-md text-teal-700 active:scale-90 border-2 border-white cursor-pointer">
             <Camera size={18} />

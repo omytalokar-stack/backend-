@@ -613,7 +613,7 @@ const App: React.FC = () => {
           <div className="space-y-3">
             {(allServices.filter(s => (localStorage.getItem('selectedCategory') || selectedCat) === (s.category || 'Other'))).map(s => (
               <div key={s.id} className="flex gap-3 bg-white p-3 rounded-[25px] border-2 border-slate-50 shadow-sm active:scale-[0.99]">
-                <img src={s.thumbnail} className="w-20 h-20 rounded-[15px] object-cover" />
+                <img src={s.thumbnail} className="w-20 h-20 rounded-[15px] object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/icons/icon-192.svg'; }} />
                 <div className="flex-1">
                   <h4 className="font-black text-slate-800">{s.name[lang]}</h4>
                   <p className="text-slate-400 text-xs">{s.features[lang]}</p>

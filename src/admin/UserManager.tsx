@@ -37,7 +37,7 @@ const UserManager: React.FC = () => {
         users.map(u => (
           <div key={u._id} className="p-4 rounded-2xl border border-slate-200 space-y-3 bg-white shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-start gap-3">
-              <img src={u.avatarUrl || 'https://picsum.photos/seed/u/50/50'} className="w-12 h-12 rounded-full object-cover flex-shrink-0 border border-slate-200" />
+              <img src={u.avatarUrl || 'https://picsum.photos/seed/u/50/50'} className="w-12 h-12 rounded-full object-cover flex-shrink-0 border border-slate-200" onError={(e) => { (e.currentTarget as HTMLImageElement).src = 'https://picsum.photos/seed/u/50/50'; }} />
               <div className="flex-1 min-w-0">
                 <div className="font-bold text-slate-800 text-sm truncate">{u.email || u.phone || 'Unknown'}</div>
                 <div className="text-xs text-slate-500">{u.nickname || u.role || 'User'}</div>
