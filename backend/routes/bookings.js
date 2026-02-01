@@ -7,6 +7,14 @@ const Booking = require('../models/Booking');
 // Allowed booking start hours: 13..18 (end must be <= 19)
 const HOURS_START = Array.from({ length: 6 }, (_, i) => 13 + i); // 13,14,15,16,17,18
 
+// Helper: Convert 24-hour to 12-hour format
+const convert24To12 = (hour) => {
+  if (hour === 0) return '12:00 AM';
+  if (hour < 12) return `${hour}:00 AM`;
+  if (hour === 12) return '12:00 PM';
+  return `${hour - 12}:00 PM`;
+};
+
 router.get('/available', authenticateToken, async (req, res) => {
   try {
     const { serviceId, date } = req.query;
@@ -55,9 +63,14 @@ router.get('/available', authenticateToken, async (req, res) => {
         return;
       }
       
-      // Show slot if available (not booked)
+      // Only show slots that are available (not booked)
       if (ok) {
-        slots.push({ startHour: h, endHour: end, label: `${h}:00-${end}:00` });
+        const startLabel = convert24To12(h);
+        const endLabel = convert24To12(end);
+        slots.push({ startHour: h, endHour: end, label: `${startLabel} - ${endLabel}` });
+        console.log(`✅ Slot available: ${startLabel} - ${endLabel}`);
+      } else {
+        console.log(`❌ Slot booked: ${convert24To12(h)} - ${convert24To12(end)}`);
       }
     });
     
@@ -89,11 +102,36 @@ router.post('/', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Cannot book for past time. Please select a future slot.' });
     }
 
-    // Check for double booking - no overlapping on the same date (single worker constraint)
-    const clashes = await Booking.findOne({ date, startHour: { $lt: endHour }, endHour: { $gt: startHour } });
-    if (clashes) return res.status(400).json({ error: 'This slot is already booked.' });
-    const b = await Booking.create({ userId: req.user.userId, serviceId, date, startHour, endHour, status: 'Pending' });
-    console.log('✅ Booking created:', b._id);
+    // CRITICAL: Real-time double-booking check BEFORE creating booking
+    // Check if ANY booking overlaps with requested slot
+    const clashes = await Booking.findOne({
+      date,
+      $or: [
+        { startHour: { $lt: endHour, $gte: startHour } },
+        { endHour: { $gt: startHour, $lte: endHour } },
+        { startHour: { $lte: startHour }, endHour: { $gte: endHour } }
+      ]
+    });
+
+    if (clashes) {
+      console.warn('⚠️ Slot conflict detected! Another booking overlaps:', { clashes: clashes._id, requestedSlot: { startHour, endHour } });
+      return res.status(409).json({ 
+        error: 'This slot is already booked by another user. Please refresh and select a different slot.',
+        bookedSlot: { startHour: clashes.startHour, endHour: clashes.endHour }
+      });
+    }
+
+    // Safe to create booking
+    const b = await Booking.create({ 
+      userId: req.user.userId, 
+      serviceId, 
+      date, 
+      startHour, 
+      endHour, 
+      status: 'Pending' 
+    });
+    
+    console.log('✅ Booking created successfully:', { bookingId: b._id, slot: `${startHour}-${endHour}` });
     res.json(b);
   } catch (err) {
     console.error('❌ Error creating booking:', err.message);

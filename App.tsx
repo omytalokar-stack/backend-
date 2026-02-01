@@ -378,7 +378,15 @@ const App: React.FC = () => {
       console.log('📬 Response data:', data);
       
       if (!res.ok) {
-        throw new Error(data.error || `Server error: ${res.status}`);
+        // Handle specific error codes
+        if (res.status === 409) {
+          // Slot conflict - another user booked it
+          throw new Error('❌ Oops! Another user just booked this slot. Please refresh and select a different time.');
+        } else if (res.status === 400) {
+          throw new Error(data.error || 'Invalid booking request');
+        } else {
+          throw new Error(data.error || `Server error: ${res.status}`);
+        }
       }
       return data;
     })

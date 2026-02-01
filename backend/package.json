@@ -25,6 +25,7 @@
     "mongoose": "^7.8.8",
     "multer": "^2.0.2",
     "multer-storage-cloudinary": "^4.0.0",
+    "node-cron": "^3.0.2",
     "streamifier": "^0.1.1"
   },
   "devDependencies": {

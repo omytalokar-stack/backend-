@@ -10,6 +10,7 @@ const reelsRoutes = require('./routes/reels');
 const adminRoutes = require('./routes/admin');
 const bookingRoutes = require('./routes/bookings');
 const notificationRoutes = require('./routes/notifications');
+const { initializeCronJobs } = require('./cronJobs');
 
 const app = express();
 
@@ -74,6 +75,9 @@ mongoose
   .connect(MONGODB_URI)
   .then(async () => {
     console.log('✅ MongoDB Connected to DB:', mongoose.connection.name || 'unknown');
+    
+    // Initialize cron jobs
+    initializeCronJobs();
     
     // Auto-seed default services if none exist
     // Disabled by default in production to avoid accidental mock data injection.
