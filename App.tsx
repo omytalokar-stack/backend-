@@ -95,6 +95,7 @@ const App: React.FC = () => {
   const [dbServices, setDbServices] = useState<any[]>([]);
   const [servicesLoaded, setServicesLoaded] = useState(false);
   const [publicReels, setPublicReels] = useState<any[]>([]);
+  const [navigationHistory, setNavigationHistory] = useState<Array<{ view: string; activeTab: string }>>([]);
 
   const t = translations[lang];
   const isAdminUser = useMemo(() => {
@@ -134,6 +135,23 @@ const App: React.FC = () => {
     }
   }, []);
 
+  // Intercept browser back button to prevent app exit
+  useEffect(() => {
+    // Push initial state to history
+    window.history.pushState(null, '', window.location.href);
+    
+    const handlePopState = () => {
+      console.log('📱 Back button detected, navigating within app');
+      handleBackNavigation();
+    };
+    
+    window.addEventListener('popstate', handlePopState);
+    
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [activeTab, view, navigationHistory]);
+
   // Fetch services from database on app load
   useEffect(() => {
     console.log('📦 Fetching services from database...');
@@ -144,14 +162,15 @@ const App: React.FC = () => {
           console.log('✅ Loaded', services.length, 'services from database');
           setDbServices(services);
         } else {
-          console.log('⚠️ No services in database, using mock data');
-          setDbServices(mockServices);
+          console.warn('⚠️ No services available from database; leaving services empty (no mock data)');
+          setDbServices([]);
         }
         setServicesLoaded(true);
       })
       .catch(err => {
         console.error('❌ Failed to load services:', err);
-        setDbServices(mockServices);
+        // Do NOT fall back to mock data. Surface the error and expose empty services.
+        setDbServices([]);
         setServicesLoaded(true);
       });
   }, []);
@@ -245,6 +264,28 @@ const App: React.FC = () => {
     // Redirect to home to show login screen
     setView('main');
     setActiveTab('home');
+    setNavigationHistory([]); // Clear history on logout
+  };
+
+  // Handle back navigation - always goes to home first
+  const handleBackNavigation = () => {
+    console.log('🔙 Back button pressed');
+    if (activeTab === 'reels') {
+      // From reels → go to home
+      setActiveTab('home');
+      setView('main');
+      setNavigationHistory([]);
+    } else if (view !== 'main') {
+      // From any other view → go back to main
+      setView('main');
+      setNavigationHistory(navigationHistory.slice(0, -1));
+    } else if (activeTab !== 'home') {
+      // Already in main view but not home tab → go to home
+      setActiveTab('home');
+      setNavigationHistory([]);
+    }
+    // Prevent default browser behavior
+    window.history.pushState(null, '', window.location.href);
   };
 
   const handleServiceSelect = (service: Service) => {
@@ -711,7 +752,7 @@ const App: React.FC = () => {
               baseRate: 0
             }));
           }
-          return <ReelScreen lang={lang} services={reelServices} onBook={handleServiceSelect} onClose={() => setActiveTab('home')} getDisplayRate={getDisplayRate} />;
+          return <ReelScreen lang={lang} services={reelServices} onBook={handleServiceSelect} onBack={handleBackNavigation} onClose={() => setActiveTab('home')} getDisplayRate={getDisplayRate} />;
         }
       case 'trending':
         // Sort by click counts

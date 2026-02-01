@@ -2,7 +2,7 @@
 import React, { useRef, useState } from 'react';
 import { translations } from '../translations';
 import { Service, Language } from '../types';
-import { Heart, MessageCircle, Bookmark, Gift, Play, X } from 'lucide-react';
+import { Heart, MessageCircle, Bookmark, Gift, Play, X, ArrowLeft } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
@@ -11,10 +11,11 @@ interface Props {
   services: Service[];
   onBook: (service: Service) => void;
   onClose?: () => void;
+  onBack?: () => void;
   getDisplayRate?: (service: Service) => string;
 }
 
-const ReelScreen: React.FC<Props> = ({ lang, services, onBook, onClose, getDisplayRate }) => {
+const ReelScreen: React.FC<Props> = ({ lang, services, onBook, onClose, onBack, getDisplayRate }) => {
   const t = translations[lang];
   
   // Check for sessionStorage reels (from saved reels click)
@@ -62,16 +63,30 @@ const ReelScreen: React.FC<Props> = ({ lang, services, onBook, onClose, getDispl
 
   return (
     <div className="h-full snap-y-mandatory scroll-smooth overflow-y-scroll no-scrollbar bg-black relative" style={{ scrollBehavior: 'smooth', scrollSnapType: 'y mandatory' }}>
-      {/* Close button */}
-      {onClose && (
-        <button
-          onClick={onClose}
-          className="fixed top-6 right-6 z-50 bg-white/20 hover:bg-white/40 backdrop-blur-sm text-white p-2.5 rounded-full transition-all active:scale-95"
-          title="Close reels"
-        >
-          <X size={24} />
-        </button>
-      )}
+      {/* Navigation buttons */}
+      <div className="fixed top-6 left-6 right-6 z-50 flex justify-between items-center pointer-events-none">
+        {/* Back button */}
+        {onBack && (
+          <button
+            onClick={onBack}
+            className="bg-white/20 hover:bg-white/40 backdrop-blur-sm text-white p-2.5 rounded-full transition-all active:scale-95 pointer-events-auto"
+            title="Go back to home"
+          >
+            <ArrowLeft size={24} />
+          </button>
+        )}
+        
+        {/* Close button */}
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="bg-white/20 hover:bg-white/40 backdrop-blur-sm text-white p-2.5 rounded-full transition-all active:scale-95 pointer-events-auto ml-auto"
+            title="Close reels"
+          >
+            <X size={24} />
+          </button>
+        )}
+      </div>
       
       {validReels.map((service, idx) => (
         <ReelItem key={`${(service as any)._id || service.id}-${idx}`} service={service} lang={lang} t={t} onBook={onBook} getDisplayRate={getDisplayRate} />

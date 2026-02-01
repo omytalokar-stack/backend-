@@ -10,6 +10,18 @@ const Notification = require('../models/Notification');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const cloudinary = require('cloudinary').v2;
+
+// Configure Cloudinary from CLOUDINARY_URL or individual env vars
+if (process.env.CLOUDINARY_URL) {
+  cloudinary.config({ url: process.env.CLOUDINARY_URL });
+} else if (process.env.CLOUDINARY_CLOUD_NAME) {
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
+  });
+}
 
 // Upload configuration - same as server.js
 const uploadsDir = path.join(__dirname, '../uploads');
@@ -41,7 +53,7 @@ const upload = multer({
 });
 
 // TEMP: Seed endpoint (no auth) - for testing/development only
-router.post('/seed', async (req, res) => {
+router.post('/seed', authenticateToken, ensureAdmin, async (req, res) => {
   try {
     const seedData = [
       {
@@ -159,20 +171,30 @@ router.post('/upload', authenticateToken, ensureAdmin, upload.single('file'), as
       console.error('❌ No file in request');
       return res.status(400).json({ error: 'No file provided' });
     }
+    // Upload to Cloudinary so files persist across deploys
+    if (!cloudinary.config().cloud_name) {
+      // Cloudinary not configured - fallback to returning local URL but log prominently
+      const baseUrl = process.env.BACKEND_URL || `${req.protocol}://${req.get('host')}`;
+      const fileUrl = `${baseUrl}/uploads/${req.file.filename}`;
+      console.warn('⚠️ Cloudinary not configured. Returning local uploads path:', fileUrl);
+      return res.json({ url: fileUrl, filename: req.file.filename, originalName: req.file.originalname, size: req.file.size, mimetype: req.file.mimetype });
+    }
 
-    // Generate URL for the uploaded file using environment or request origin
-    // On Render, use the backend URL from env or construct from request
-    const baseUrl = process.env.BACKEND_URL || `${req.protocol}://${req.get('host')}`;
-    const fileUrl = `${baseUrl}/uploads/${req.file.filename}`;
-    
-    console.log(`✅ Upload successful: ${req.file.originalname} → ${fileUrl}`);
-    res.json({ 
-      url: fileUrl, 
-      filename: req.file.filename,
-      originalName: req.file.originalname,
-      size: req.file.size,
-      mimetype: req.file.mimetype
-    });
+    try {
+      const result = await cloudinary.uploader.upload(req.file.path, { resource_type: 'auto', folder: process.env.CLOUDINARY_FOLDER || 'pastelservice' });
+      // Remove local temp file
+      fs.unlink(req.file.path, (uerr) => {
+        if (uerr) console.warn('⚠️ Failed to remove temp upload file:', uerr.message);
+      });
+      console.log(`✅ Upload successful to Cloudinary: ${result.secure_url}`);
+      return res.json({ url: result.secure_url, public_id: result.public_id, originalName: req.file.originalname, size: req.file.size, mimetype: req.file.mimetype });
+    } catch (cErr) {
+      console.error('❌ Cloudinary upload failed:', cErr.message);
+      // As a last resort, return local file URL but mark error
+      const baseUrl = process.env.BACKEND_URL || `${req.protocol}://${req.get('host')}`;
+      const fileUrl = `${baseUrl}/uploads/${req.file.filename}`;
+      return res.status(500).json({ error: 'Cloudinary upload failed', details: cErr.message, fallbackUrl: fileUrl });
+    }
   } catch (e) {
     console.error('❌ Upload error:', e.message);
     console.error('Stack:', e.stack);
