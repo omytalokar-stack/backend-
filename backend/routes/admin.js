@@ -254,6 +254,68 @@ router.get('/reels', authenticateToken, ensureAdmin, async (req, res) => {
   }
 });
 
+// Admin: migrate any local /uploads references to Cloudinary (one-time)
+router.post('/migrate-uploads', authenticateToken, ensureAdmin, async (req, res) => {
+  if (!cloudinary.config().cloud_name) return res.status(400).json({ error: 'Cloudinary not configured' });
+  try {
+    const services = await Service.find();
+    const reels = await Reel.find();
+    const migrated = { services: 0, reels: 0 };
+    const uploadLocalFile = async (localPath) => {
+      const full = path.join(__dirname, '..', localPath.replace(/^\/+/, ''));
+      if (!fs.existsSync(full)) return null;
+      const result = await cloudinary.uploader.upload(full, { folder: process.env.CLOUDINARY_FOLDER || 'pastelservice', resource_type: 'auto' });
+      return result.secure_url || result.url;
+    };
+
+    // Services
+    for (const s of services) {
+      let changed = false;
+      if (s.imageUrl && s.imageUrl.includes('/uploads')) {
+        const url = await uploadLocalFile(s.imageUrl);
+        if (url) { s.imageUrl = url; changed = true; }
+      }
+      if (s.thumbnail && s.thumbnail.includes('/uploads')) {
+        const url = await uploadLocalFile(s.thumbnail);
+        if (url) { s.thumbnail = url; changed = true; }
+      }
+      if (changed) { await s.save(); migrated.services++; }
+    }
+
+    // Reels
+    for (const r of reels) {
+      let changed = false;
+      if (r.videoUrl && r.videoUrl.includes('/uploads')) {
+        const url = await uploadLocalFile(r.videoUrl);
+        if (url) { r.videoUrl = url; changed = true; }
+      }
+      if (changed) { await r.save(); migrated.reels++; }
+    }
+
+    res.json({ migrated });
+  } catch (err) {
+    console.error('❌ Migrate uploads error:', err.message);
+    res.status(500).json({ error: 'Migration failed', details: err.message });
+  }
+});
+
+// Admin: cleanup local uploads directory (deletes files under backend/uploads)
+router.post('/cleanup-uploads', authenticateToken, ensureAdmin, async (req, res) => {
+  const uploadsDir = path.join(__dirname, '../uploads');
+  try {
+    if (!fs.existsSync(uploadsDir)) return res.json({ deleted: 0, message: 'No uploads directory' });
+    const files = fs.readdirSync(uploadsDir);
+    let deleted = 0;
+    for (const f of files) {
+      try { fs.unlinkSync(path.join(uploadsDir, f)); deleted++; } catch (e) { console.warn('Failed to delete', f, e.message); }
+    }
+    return res.json({ deleted });
+  } catch (err) {
+    console.error('❌ Cleanup uploads error:', err.message);
+    return res.status(500).json({ error: 'Cleanup failed', details: err.message });
+  }
+});
+
 router.post('/reels', authenticateToken, ensureAdmin, async (req, res) => {
   try {
     const r = await Reel.create(req.body);
