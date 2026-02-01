@@ -5,7 +5,7 @@ const serviceSchema = new mongoose.Schema({
   description: { type: String, default: '' },
   category: { 
     type: String, 
-    enum: ['Bleach', 'Makeup', 'Facial', 'Cleanup'],
+    enum: ['Bleach', 'Makeup', 'Facial', 'Cleanup', 'Waxing', 'Hair Cut', 'Hair Style', 'Polishing'],
     default: 'Bleach' 
   },
   imageUrl: { type: String, default: '' },

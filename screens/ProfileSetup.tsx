@@ -11,6 +11,7 @@ interface Props {
 const ProfileSetup: React.FC<Props> = ({ lang, onSetupComplete }) => {
   const t = translations[lang];
   const [nickname, setNickname] = useState('');
+  const [mobileNumber, setMobileNumber] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('https://picsum.photos/seed/default/200/200');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -36,6 +37,10 @@ const ProfileSetup: React.FC<Props> = ({ lang, onSetupComplete }) => {
       setError('Please enter a nickname');
       return;
     }
+    if (!mobileNumber.trim() || mobileNumber.length < 10) {
+      setError('Please enter a valid mobile number');
+      return;
+    }
 
     setLoading(true);
     setError('');
@@ -51,6 +56,7 @@ const ProfileSetup: React.FC<Props> = ({ lang, onSetupComplete }) => {
         },
         body: JSON.stringify({
           nickname,
+          mobileNumber,
           avatarUrl
         })
       });
@@ -138,6 +144,24 @@ const ProfileSetup: React.FC<Props> = ({ lang, onSetupComplete }) => {
                 value={nickname}
                 onChange={(e) => setNickname(e.target.value)}
                 placeholder={lang === 'en' ? 'Enter your name' : 'अपना नाम दर्ज करें'}
+                className="w-full pl-12 pr-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-[20px] font-bold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-pink-400 focus:ring-2 focus:ring-pink-200 transition-all"
+              />
+            </div>
+          </div>
+
+          {/* Mobile Number Input */}
+          <div className="space-y-2">
+            <label className="block text-sm font-black text-slate-700 uppercase tracking-wider">
+              {lang === 'en' ? 'Mobile Number' : 'मोबाइल नंबर'}
+            </label>
+            <div className="relative">
+              <span className="absolute left-4 top-4 text-slate-400 font-bold">📱</span>
+              <input
+                type="tel"
+                value={mobileNumber}
+                onChange={(e) => setMobileNumber(e.target.value.replace(/\D/g, ''))}
+                placeholder={lang === 'en' ? 'Enter 10-digit mobile number' : '10 अंकों का मोबाइल नंबर दर्ज करें'}
+                maxLength={10}
                 className="w-full pl-12 pr-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-[20px] font-bold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-pink-400 focus:ring-2 focus:ring-pink-200 transition-all"
               />
             </div>

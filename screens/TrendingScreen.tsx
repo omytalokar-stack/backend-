@@ -16,7 +16,7 @@ const TrendingScreen: React.FC<Props> = ({ lang, services, onSelect, getDisplayR
   const [searchQuery, setSearchQuery] = React.useState('');
   const [selectedCategory, setSelectedCategory] = React.useState<string | null>(null);
   
-  const categories = ['Bleach', 'Makeup', 'Facial', 'Cleanup'];
+  const categories = ['Bleach', 'Makeup', 'Facial', 'Cleanup', 'Waxing', 'Hair Cut', 'Hair Style', 'Polishing'];
   
   // Filter services based on search and category
   const filteredServices = React.useMemo(() => {

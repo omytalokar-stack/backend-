@@ -266,15 +266,15 @@ exports.verifyFirebase = async (req, res) => {
 
 exports.setupProfile = async (req, res) => {
   try {
-    const { nickname, avatarUrl, name } = req.body;
+    const { nickname, avatarUrl, name, mobileNumber } = req.body;
     const userId = req.user?.userId;
 
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    if (!nickname && !avatarUrl && !name) {
-      return res.status(400).json({ error: 'Nickname, name, or avatarUrl required' });
+    if (!nickname && !avatarUrl && !name && !mobileNumber) {
+      return res.status(400).json({ error: 'Nickname, name, avatarUrl, or mobileNumber required' });
     }
 
     // Update user profile
@@ -282,6 +282,7 @@ exports.setupProfile = async (req, res) => {
       ...(nickname ? { nickname } : {}),
       ...(avatarUrl ? { avatarUrl } : {}),
       ...(name ? { name } : {}),
+      ...(mobileNumber ? { phone: mobileNumber } : {}),
       isSetupComplete: true,
     };
     const user = await User.findByIdAndUpdate(userId, update, { new: true });

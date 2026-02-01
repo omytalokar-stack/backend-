@@ -18,6 +18,7 @@ import ServiceManager from './src/admin/ServiceManager';
 import OrderManager from './src/admin/OrderManager';
 import UserManager from './src/admin/UserManager';
 import ReelsManager from './src/admin/ReelsManager';
+import PushNotificationService from './src/pushNotifications';
 import { 
   Home as HomeIcon, 
   PlayCircle, 
@@ -210,6 +211,15 @@ const App: React.FC = () => {
       const localU = localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')!) : {};
       localStorage.setItem('user', JSON.stringify({ ...localU, ...u }));
     }).catch(() => {});
+  }, [isLoggedIn]);
+
+  // Initialize push notifications when user logs in
+  useEffect(() => {
+    if (isLoggedIn) {
+      PushNotificationService.initialize().catch(err => {
+        console.error('Error initializing push notifications:', err);
+      });
+    }
   }, [isLoggedIn]);
 
   // Fetch public reels for the reels view

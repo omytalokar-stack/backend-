@@ -56,3 +56,73 @@ self.addEventListener('fetch', (event) => {
     caches.match(event.request).then((cached) => cached || fetch(event.request).catch(() => caches.match('/index.html')))
   );
 });
+
+// Handle push notifications
+self.addEventListener('push', (event) => {
+  console.log('Push notification received:', event);
+  
+  if (!event.data) {
+    console.warn('Push notification without data');
+    return;
+  }
+
+  try {
+    const data = event.data.json();
+    const options = {
+      body: data.message || 'You have a new notification',
+      icon: data.icon || '/icons/icon-192.svg',
+      badge: '/icons/icon-192.svg',
+      tag: 'booking-notification',
+      requireInteraction: true,
+      vibrate: [100, 50, 100],
+      actions: [
+        { action: 'open', title: 'Open App', icon: '/icons/icon-192.svg' },
+        { action: 'close', title: 'Close', icon: '/icons/icon-192.svg' }
+      ]
+    };
+
+    event.waitUntil(
+      self.registration.showNotification(data.title || 'Princess Parlor Service', options)
+    );
+  } catch (err) {
+    console.error('Error parsing push notification:', err);
+    event.waitUntil(
+      self.registration.showNotification('Princess Parlor Service', {
+        body: event.data.text(),
+        icon: '/icons/icon-192.svg',
+        badge: '/icons/icon-192.svg'
+      })
+    );
+  }
+});
+
+// Handle notification clicks
+self.addEventListener('notificationclick', (event) => {
+  console.log('Notification clicked:', event.action);
+  event.notification.close();
+
+  if (event.action === 'close') {
+    return;
+  }
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      // Check if window is already open
+      for (let client of clientList) {
+        if (client.url === '/' && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      // Open new window if not found
+      if (clients.openWindow) {
+        return clients.openWindow('/');
+      }
+    })
+  );
+});
+
+// Handle notification close
+self.addEventListener('notificationclose', (event) => {
+  console.log('Notification closed');
+});
+

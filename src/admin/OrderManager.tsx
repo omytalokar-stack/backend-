@@ -119,7 +119,15 @@ const OrderManager: React.FC = () => {
     if (!u) return id;
     return u.email || u.phone || id;
   };
-  const labelTime = (o: BookingItem) => `${o.startHour}:00-${o.endHour}:00`;
+  const labelTime = (o: BookingItem) => {
+    const convert24To12 = (hour: number) => {
+      if (hour === 0) return '12:00 AM';
+      if (hour < 12) return `${hour}:00 AM`;
+      if (hour === 12) return '12:00 PM';
+      return `${hour - 12}:00 PM`;
+    };
+    return `${convert24To12(o.startHour)}-${convert24To12(o.endHour)}`;
+  };
 
   const handleCall = (phone: string) => {
     if (phone) window.location.href = `tel:${phone}`;
@@ -299,7 +307,7 @@ const OrderManager: React.FC = () => {
                 </div>
                 <div>
                   <p className="text-xs text-slate-500 font-bold">Date & Time</p>
-                  <p className="text-sm font-black text-slate-800">{selectedBooking.date} • {selectedBooking.startHour}:00-{selectedBooking.endHour}:00</p>
+                  <p className="text-sm font-black text-slate-800">{selectedBooking.date} • {labelTime(selectedBooking)}</p>
                 </div>
               </div>
 

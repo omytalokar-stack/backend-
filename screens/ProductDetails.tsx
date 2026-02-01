@@ -64,6 +64,14 @@ const ProductDetails: React.FC<Props> = ({ service, lang, onBook, displayRate })
           </table>
         </div>
 
+        {/* Service Description Section */}
+        {service.features && service.features[lang] && (
+          <div className="p-4 bg-pink-50 border-2 border-pink-100 rounded-[20px]">
+            <h3 className="text-sm font-black text-slate-800 mb-2">{t.features || 'Service Details'}</h3>
+            <p className="text-sm font-medium text-slate-600 leading-relaxed">{service.features[lang]}</p>
+          </div>
+        )}
+
         {/* Perks */}
         <div className="grid grid-cols-2 gap-4">
           <Perk icon={<ShieldCheck className="text-teal-500" />} label="Verified Pros" />
