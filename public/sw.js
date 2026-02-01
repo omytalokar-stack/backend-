@@ -57,24 +57,28 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// Handle push notifications
+// Handle push notifications with sound and vibration
 self.addEventListener('push', (event) => {
-  console.log('Push notification received:', event);
+  console.log('🔔 Push notification received:', event);
   
   if (!event.data) {
-    console.warn('Push notification without data');
+    console.warn('⚠️ Push notification without data');
     return;
   }
 
   try {
     const data = event.data.json();
+    console.log('📬 Push data:', data);
+    
     const options = {
       body: data.message || 'You have a new notification',
       icon: data.icon || '/icons/icon-192.svg',
       badge: '/icons/icon-192.svg',
       tag: 'booking-notification',
       requireInteraction: true,
-      vibrate: [100, 50, 100],
+      vibrate: data.vibrate || [200, 100, 200, 100, 200],
+      // Note: Sound/audio in push notifications is limited in browsers
+      // but we can control it through the notification options
       actions: [
         { action: 'open', title: 'Open App', icon: '/icons/icon-192.svg' },
         { action: 'close', title: 'Close', icon: '/icons/icon-192.svg' }
@@ -82,15 +86,23 @@ self.addEventListener('push', (event) => {
     };
 
     event.waitUntil(
-      self.registration.showNotification(data.title || 'Princess Parlor Service', options)
+      self.registration.showNotification(data.title || '🔔 Princess Parlor Service', options)
+        .then(() => {
+          console.log('✅ Push notification shown in system tray');
+        })
+        .catch((err) => {
+          console.error('❌ Error showing push notification:', err);
+        })
     );
   } catch (err) {
-    console.error('Error parsing push notification:', err);
+    console.error('❌ Error parsing push notification:', err);
     event.waitUntil(
-      self.registration.showNotification('Princess Parlor Service', {
+      self.registration.showNotification('🔔 Princess Parlor Service', {
         body: event.data.text(),
         icon: '/icons/icon-192.svg',
-        badge: '/icons/icon-192.svg'
+        badge: '/icons/icon-192.svg',
+        vibrate: [200, 100, 200, 100, 200],
+        requireInteraction: true
       })
     );
   }
@@ -98,7 +110,7 @@ self.addEventListener('push', (event) => {
 
 // Handle notification clicks
 self.addEventListener('notificationclick', (event) => {
-  console.log('Notification clicked:', event.action);
+  console.log('🔔 Notification clicked with action:', event.action);
   event.notification.close();
 
   if (event.action === 'close') {
@@ -110,11 +122,13 @@ self.addEventListener('notificationclick', (event) => {
       // Check if window is already open
       for (let client of clientList) {
         if (client.url === '/' && 'focus' in client) {
+          console.log('✅ Focusing existing app window');
           return client.focus();
         }
       }
       // Open new window if not found
       if (clients.openWindow) {
+        console.log('🪟 Opening new app window');
         return clients.openWindow('/');
       }
     })

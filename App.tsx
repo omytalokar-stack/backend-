@@ -216,9 +216,34 @@ const App: React.FC = () => {
   // Initialize push notifications when user logs in
   useEffect(() => {
     if (isLoggedIn) {
-      PushNotificationService.initialize().catch(err => {
-        console.error('Error initializing push notifications:', err);
-      });
+      console.log('🔔 Initializing push notifications for user...');
+      // Request permission on first login
+      if (Notification.permission === 'default') {
+        console.log('🔔 Showing notification permission popup...');
+        PushNotificationService.registerForPushNotifications()
+          .then(success => {
+            if (success) {
+              console.log('✅ Push notifications enabled successfully');
+              // Send test notification to confirm
+              setTimeout(() => {
+                PushNotificationService.sendLocalNotification(
+                  '🔔 Princess Parlor',
+                  { 
+                    body: 'Push notifications are now active! You will receive alerts for your bookings.',
+                    sound: true,
+                    vibrate: [100, 50, 100]
+                  }
+                ).catch(() => {});
+              }, 500);
+            }
+          })
+          .catch(err => console.error('❌ Error initializing push notifications:', err));
+      } else if (Notification.permission === 'granted') {
+        // Already permitted, just initialize
+        PushNotificationService.initialize().catch(err => {
+          console.error('❌ Error initializing push notifications:', err);
+        });
+      }
     }
   }, [isLoggedIn]);
 

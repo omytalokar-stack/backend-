@@ -130,18 +130,52 @@ const OrderManager: React.FC = () => {
   };
 
   const handleCall = (phone: string) => {
-    if (phone) window.location.href = `tel:${phone}`;
+    if (!phone) {
+      alert('📱 No phone number available');
+      return;
+    }
+    
+    // Remove any non-digit characters and clean up
+    const cleanPhone = phone.replace(/\D/g, '');
+    if (cleanPhone.length < 10) {
+      alert('❌ Invalid phone number');
+      return;
+    }
+    
+    // Trigger native call dialer with tel: protocol
+    console.log('📞 Initiating call to:', cleanPhone);
+    // Format: tel:+91XXXXXXXXXX for Indian numbers, or just tel:+CCNUMBER
+    window.location.href = `tel:+91${cleanPhone}`;
   };
 
   const handleNotification = async (booking: any) => {
     try {
       const token = localStorage.getItem('token');
       if (!token) {
-        alert('Not authenticated');
+        alert('❌ Not authenticated');
         return;
       }
 
       const message = 'Aap tayar ho jaiye, aapka service time aa gaya hai! Jaldi parlor mein aa jaiye. ✨';
+      const title = `🔔 Service Alert - ${nameByService(booking.serviceId)}`;
+      
+      // Play notification sound and vibration locally for admin
+      if ('vibrate' in navigator) {
+        navigator.vibrate([200, 100, 200, 100, 200]);
+        console.log('📳 Admin notification vibration sent');
+      }
+
+      // Create audio notification
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      oscillator.frequency.setValueAtTime(880, audioContext.currentTime);
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.2);
       
       const response = await fetch(`${API_BASE}/api/admin/notify`, {
         method: 'POST',
@@ -153,6 +187,15 @@ const OrderManager: React.FC = () => {
           userId: booking.userId,
           bookingId: booking._id,
           message,
+          title,
+          notificationOptions: {
+            body: message,
+            icon: '/icons/icon-192.svg',
+            badge: '/icons/icon-192.svg',
+            tag: `booking-${booking._id}`,
+            vibrate: [200, 100, 200, 100, 200],
+            requireInteraction: true
+          }
         }),
         credentials: 'include'
       });
