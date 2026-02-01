@@ -9,9 +9,28 @@ const ASSETS_TO_CACHE = [
 ];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS_TO_CACHE))
-  );
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    // Use Promise.allSettled so one failing asset doesn't abort the whole install
+    const results = await Promise.allSettled(
+      ASSETS_TO_CACHE.map(async (url) => {
+        try {
+          const res = await fetch(url, { cache: 'no-cache' });
+          if (!res || !res.ok) throw new Error(`Failed to fetch ${url}: ${res && res.status}`);
+          await cache.put(url, res.clone());
+          return { url, ok: true };
+        } catch (err) {
+          console.warn('sw: cache install warning for', url, err && err.message);
+          return { url, ok: false, err: err && err.message };
+        }
+      })
+    );
+
+    const failed = results.filter(r => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.ok));
+    if (failed.length > 0) {
+      console.warn('sw: some assets failed to cache during install', failed.map(f => f.status === 'fulfilled' ? f.value.url : 'rejected'));
+    }
+  })());
   self.skipWaiting();
 });
 
