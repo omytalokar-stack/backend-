@@ -3,7 +3,11 @@ const mongoose = require('mongoose');
 const serviceSchema = new mongoose.Schema({
   name: { type: String, required: true },
   description: { type: String, default: '' },
-  category: { type: String, default: 'General' },
+  category: { 
+    type: String, 
+    enum: ['Bleach', 'Makeup', 'Facial', 'Cleanup'],
+    default: 'Bleach' 
+  },
   imageUrl: { type: String, default: '' },
   videoUrl: { type: String, default: '' },
   durationMinutes: { type: Number, default: 60 },
