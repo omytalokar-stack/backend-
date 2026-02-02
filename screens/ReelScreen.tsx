@@ -136,6 +136,7 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const reelId = (service as any)._id || service.id;
+  const [userLiked, setUserLiked] = useState(false);
 
   // Helper to safely localize fields that may be strings or { en, hi } objects
   const localizeField = (field: any) => {
@@ -255,6 +256,35 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
     };
   }, []);
 
+  const handleLike = async () => {
+    const newLiked = !userLiked;
+    setUserLiked(newLiked);
+    setLikesCount((prev) => (newLiked ? prev + 1 : Math.max(0, prev - 1)));
+
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch(`${API_BASE}/api/reels/${reelId}/like`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ liked: newLiked })
+      });
+      if (!res.ok) {
+        setUserLiked(!newLiked);
+        setLikesCount((prev) => (newLiked ? Math.max(0, prev - 1) : prev + 1));
+      } else {
+        const data = await res.json();
+        if (typeof data.likes === 'number') setLikesCount(data.likes);
+      }
+    } catch (e) {
+      console.error('❌ Like error:', e);
+      setUserLiked(!newLiked);
+      setLikesCount((prev) => (newLiked ? Math.max(0, prev - 1) : prev + 1));
+    }
+  };
+
   const handleSaveReel = async () => {
     const token = localStorage.getItem('token');
     try {
@@ -359,40 +389,42 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
         )}
 
       {/* Right-side engagement vertical bar (icons + counts) - moved to bottom-right */}
-      <div className="absolute right-4 bottom-28 flex flex-col gap-6 items-center z-30 pointer-events-auto">
-        <button onClick={() => setLiked(!liked)} className="flex flex-col items-center gap-2">
-          <Heart size={30} fill={liked ? '#FF3CAC' : 'none'} className={liked ? 'text-[#FF3CAC] drop-shadow-xl' : 'text-white drop-shadow-lg'} />
+      <div className="absolute right-6 bottom-[20vh] flex flex-col gap-8 items-center z-30 pointer-events-auto">
+        <button onClick={handleLike} className="flex flex-col items-center gap-2 group transition-transform active:scale-90">
+          <Heart size={30} fill={userLiked ? '#FF3CAC' : 'none'} className={`transition-all ${
+            userLiked ? 'text-[#FF3CAC] drop-shadow-[0_0_12px_rgba(255,60,172,0.6)]' : 'text-white drop-shadow-lg'
+          }`} />
           <span className="text-sm font-extrabold text-white drop-shadow-sm">{likesCount}</span>
         </button>
 
-        <button onClick={() => setShowComments(true)} className="flex flex-col items-center gap-2">
-          <MessageCircle size={28} className="text-white drop-shadow-lg" />
+        <button onClick={() => setShowComments(true)} className="flex flex-col items-center gap-2 group transition-transform active:scale-90">
+          <MessageCircle size={28} className="text-white drop-shadow-lg group-hover:scale-110 transition-transform" />
           <span className="text-sm font-extrabold text-white drop-shadow-sm">{comments.length}</span>
         </button>
 
-        <button onClick={handleSaveReel} className="flex flex-col items-center gap-2">
-          <Bookmark size={26} className="text-white drop-shadow-lg" />
+        <button onClick={handleSaveReel} className="flex flex-col items-center gap-2 group transition-transform active:scale-90">
+          <Bookmark size={26} className="text-white drop-shadow-lg group-hover:scale-110 transition-transform" />
           <span className="text-sm font-extrabold text-white drop-shadow-sm">{t.save}</span>
         </button>
       </div>
 
-      {/* Left-side Title + Description + Prominent Book Now (no big black box, subtle gradient) */}
-      <div className="absolute left-4 bottom-24 z-30 max-w-[62%] text-white pointer-events-auto">
-        <div className="bg-gradient-to-t from-black/60 via-black/30 to-transparent p-3 rounded-xl backdrop-blur-sm">
-          <h3 className="font-extrabold text-lg leading-tight drop-shadow-md">{localizeField((service as any).serviceName || (service as any).title || (service as any).name || (service as any).service) || 'Service'}</h3>
+      {/* Left-side Title + Description + Prominent Book Now (5-10% from bottom, full gradient behind text) */}
+      <div className="absolute left-4 right-20 bottom-8 z-30 max-w-[70%] text-white pointer-events-auto">
+        <div className="bg-gradient-to-t from-black/80 via-black/50 to-transparent p-5 rounded-2xl backdrop-blur-md">
+          <h3 className="font-black text-xl leading-tight drop-shadow-lg">{localizeField((service as any).serviceName || (service as any).title || (service as any).name || (service as any).service) || 'Service'}</h3>
           {localizeField((service as any).description || (service as any).features) ? (
-            <p className="mt-1 text-sm text-white/90 leading-snug drop-shadow-sm">{localizeField((service as any).description || (service as any).features)}</p>
+            <p className="mt-2 text-sm text-white/95 leading-snug drop-shadow-md">{localizeField((service as any).description || (service as any).features)}</p>
           ) : null}
 
           {(service as any).serviceId ? (
-            <div className="mt-3">
+            <div className="mt-4">
               <button
                 onClick={(e) => { e.stopPropagation(); onBook(service); }}
-                className="inline-flex items-center gap-3 px-5 py-3 rounded-full font-extrabold text-white text-base shadow-lg hover:scale-[0.99] transition-transform"
-                style={{ background: 'linear-gradient(90deg,#FF3CAC 0%, #FFD166 100%)' }}
+                className="inline-flex items-center gap-3 px-7 py-3 rounded-full font-extrabold text-white text-lg shadow-2xl hover:shadow-[0_0_25px_rgba(255,60,172,0.6)] active:scale-95 transition-all duration-200"
+                style={{ background: 'linear-gradient(135deg,#FF3CAC 0%, #FFD166 100%)' }}
                 title={t.bookNow}
               >
-                <Play size={18} className="inline-block" />
+                <Play size={20} className="inline-block" />
                 {t.bookNow}
               </button>
             </div>
@@ -401,52 +433,53 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
       </div>
       </div>
 
-      {/* Comments Bottom Sheet (glassmorphism) */}
+      {/* Comments Bottom Sheet (glassmorphism, 60% height) */}
       {showComments && (
-        <div className="fixed inset-x-0 bottom-0 z-40 flex items-end justify-center">
-          <div className="w-full max-w-3xl h-[66vh] bg-white/8 backdrop-blur-xl border border-white/10 rounded-t-3xl p-4 text-white shadow-2xl transform transition-transform">
-            {/* drag handle */}
-            <div className="w-12 h-1.5 bg-white/30 rounded-full mx-auto mb-3" />
+        <>
+          <div className="fixed inset-0 bg-black/40 z-30 backdrop-blur-sm" onClick={() => setShowComments(false)} />
+          <div className="fixed inset-x-0 bottom-0 z-40 flex items-end justify-center">
+            <div className="w-full max-w-3xl h-[60vh] bg-white/12 backdrop-blur-2xl border-t border-white/20 rounded-t-3xl p-5 text-white shadow-2xl transform transition-transform">
+              {/* drag handle */}
+              <div className="w-14 h-1.5 bg-white/40 rounded-full mx-auto mb-4" />
 
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="font-extrabold text-lg">Comments ({comments.length})</h4>
-              <div className="flex items-center gap-2">
-                <button onClick={() => setShowComments(false)} className="px-3 py-1 bg-white/6 rounded-full">Close</button>
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="font-black text-xl">Comments ({comments.length})</h4>
+                <button onClick={() => setShowComments(false)} className="px-4 py-1.5 bg-white/10 hover:bg-white/20 rounded-full text-sm font-bold transition-colors">Close</button>
               </div>
-            </div>
 
-            <div className="h-[52vh] overflow-y-auto pb-24 space-y-3">
-              {loadingComments ? (
-                <p className="text-white/60 text-sm font-bold">Loading comments...</p>
-              ) : comments.length === 0 ? (
-                <p className="text-white/60 text-sm font-bold">No comments yet. Be the first!</p>
-              ) : (
-                comments.map((c) => (
-                  <CommentRow key={c._id || c.createdAt || Math.random()} c={c} />
-                ))
-              )}
-            </div>
+              <div className="h-[48vh] overflow-y-auto pb-24 space-y-3 pr-2">
+                {loadingComments ? (
+                  <p className="text-white/60 text-sm font-bold">Loading comments...</p>
+                ) : comments.length === 0 ? (
+                  <p className="text-white/60 text-sm font-bold">No comments yet. Be the first!</p>
+                ) : (
+                  comments.map((c) => (
+                    <CommentRow key={c._id || c.createdAt || Math.random()} c={c} />
+                  ))
+                )}
+              </div>
 
-            {/* Input bar fixed inside sheet */}
-            <div className="fixed left-0 right-0 bottom-0 max-w-3xl mx-auto px-4 pb-6">
-              <div className="flex gap-2 items-center bg-white/6 rounded-full p-2">
-                <div className="w-9 h-9 rounded-full bg-white/12 flex items-center justify-center font-bold text-sm">{(() => {
-                  const u = (localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user') as string) : null);
-                  return u && u.name ? u.name.charAt(0).toUpperCase() : 'U';
-                })()}</div>
-                <input
-                  value={commentInput}
-                  onChange={(e) => setCommentInput(e.target.value)}
-                  placeholder="Add a comment..."
-                  className="flex-1 bg-transparent outline-none px-2 text-white"
-                  disabled={loadingComments}
-                  onKeyDown={(e) => { if (e.key === 'Enter') handleAddComment(); }}
-                />
-                <button onClick={handleAddComment} className="px-3 py-2 bg-gradient-to-r from-[#FF3CAC] to-[#FFD166] rounded-full font-black text-white">Send</button>
+              {/* Input bar fixed at bottom of sheet */}
+              <div className="absolute left-0 right-0 bottom-0 max-w-3xl mx-auto px-5 py-4 bg-gradient-to-t from-black/20 to-transparent">
+                <div className="flex gap-3 items-center bg-white/8 rounded-full px-4 py-3 border border-white/10">
+                  <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center font-bold text-sm flex-shrink-0">{(() => {
+                    const u = (localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user') as string) : null);
+                    return u && u.name ? u.name.charAt(0).toUpperCase() : 'U';
+                  })()}</div>
+                  <input
+                    value={commentInput}
+                    onChange={(e) => setCommentInput(e.target.value)}
+                    placeholder="Add a comment..."
+                    className="flex-1 bg-transparent outline-none px-2 text-white placeholder-white/50"
+                    disabled={loadingComments}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleAddComment(); }}
+                  />
+                  <button onClick={handleAddComment} disabled={loadingComments || !commentInput.trim()} className="px-4 py-2 bg-gradient-to-r from-[#FF3CAC] to-[#FFD166] rounded-full font-extrabold text-white hover:shadow-lg disabled:opacity-50 transition-all flex-shrink-0">Send</button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        </>
       )}
 
       {/* CommentRow component (inline) */}
@@ -464,7 +497,7 @@ const InteractionButton: React.FC<{ icon: React.ReactNode; label: string; onClic
   </button>
 );
 
-// Inline CommentRow component to render each comment with avatar, time-ago and like
+// Inline CommentRow component to render each comment with avatar, user name, time-ago, text, and like
 const CommentRow: React.FC<{ c: any }> = ({ c }) => {
   const [liked, setLiked] = useState<boolean>(false);
   const created = c && c.createdAt ? new Date(c.createdAt) : null;
@@ -482,24 +515,24 @@ const CommentRow: React.FC<{ c: any }> = ({ c }) => {
   };
 
   const userInitial = (c && c.userName) ? c.userName.charAt(0).toUpperCase() : 'U';
+  const commentText = typeof c === 'string' ? c : c.text || '';
 
   return (
-    <div className="flex gap-3 items-start p-2">
-      <div className="w-10 h-10 rounded-full bg-white/12 flex items-center justify-center font-bold text-sm">{userInitial}</div>
-      <div className="flex-1">
-        <div className="flex items-center justify-between">
-          <div>
+    <div className="flex gap-3 items-start p-3 bg-white/5 rounded-xl hover:bg-white/8 transition-colors">
+      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#FF3CAC] to-[#FFD166] flex items-center justify-center font-bold text-sm flex-shrink-0">{userInitial}</div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1">
             <div className="font-bold text-white text-sm">{c.userName || 'User'}</div>
-            <div className="text-xs text-white/60">{timeAgo(created)}</div>
+            <div className="text-xs text-white/50 mt-0.5">{timeAgo(created)}</div>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="text-sm text-white/60">{c.likes || 0}</div>
-            <button onClick={() => setLiked(!liked)} className={`p-1 rounded-full ${liked ? 'bg-white/10' : 'bg-transparent'}`}>
-              <Heart size={16} fill={liked ? '#FF3CAC' : 'none'} className={liked ? 'text-[#FF3CAC]' : 'text-white/70'} />
-            </button>
-          </div>
+          <button onClick={() => setLiked(!liked)} className={`p-1.5 rounded-full transition-all flex-shrink-0 ${
+            liked ? 'bg-white/20' : 'bg-white/5 hover:bg-white/10'
+          }`}>
+            <Heart size={16} fill={liked ? '#FF3CAC' : 'none'} className={liked ? 'text-[#FF3CAC]' : 'text-white/60'} />
+          </button>
         </div>
-        <div className="mt-1 text-white text-sm">{typeof c === 'string' ? c : c.text}</div>
+        <div className="mt-2 text-white text-sm leading-snug break-words">{commentText}</div>
       </div>
     </div>
   );
