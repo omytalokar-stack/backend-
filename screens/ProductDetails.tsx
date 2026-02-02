@@ -25,23 +25,40 @@ const ProductDetails: React.FC<Props> = ({ service, lang, onBook, displayRate })
     if (!service) return;
     
     const serviceId = (service as any)._id || service.id;
-    
-    // If service already has features, name, and rate, it's complete
-    if (service.name && service.features && service.rate && Object.keys(service).length > 5) {
+    if (!serviceId) {
+      console.error('❌ Service ID not found');
       setFullService(service);
       return;
     }
     
-    // Otherwise fetch from API
+    // Check if we have COMPLETE service data (all required fields)
+    const hasRequiredFields = 
+      service.name && 
+      service.features && 
+      service.rate && 
+      service.time &&
+      (typeof service.baseRate === 'number' || service.rate);
+    
+    if (hasRequiredFields) {
+      console.log(`✅ Service already has complete data: ${serviceId}`);
+      setFullService(service);
+      return;
+    }
+    
+    // Otherwise fetch from API (important for Reel-sourced bookings)
+    console.log(`⏳ Fetching complete service data for ${serviceId}...`);
     setLoading(true);
     fetch(`${API_BASE}/api/services/${serviceId}`)
-      .then(res => res.ok ? res.json() : null)
+      .then(res => {
+        if (!res.ok) throw new Error(`${res.status}`);
+        return res.json();
+      })
       .then(data => {
-        if (data) {
+        if (data && data.name && data.rate) {
           setFullService(data);
-          console.log(`✅ Loaded full service details for ${serviceId}`);
+          console.log(`✅ Loaded full service details: ${data.name.en || data.name}`);
         } else {
-          // Fallback to passed service
+          console.warn('⚠️ API returned incomplete data, using provided service');
           setFullService(service);
         }
       })

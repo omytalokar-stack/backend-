@@ -26,11 +26,63 @@ const BookingPage: React.FC<Props> = ({ service, lang, onConfirm, getDisplayRate
   });
 
   const [slots, setSlots] = useState<{ label: string; startHour: number; endHour: number }[]>([]);
+  const [fullService, setFullService] = useState<Service>(service);
+  const [loadingService, setLoadingService] = useState(false);
+
+  // Ensure we have complete service data (especially important for Reel bookings)
+  useEffect(() => {
+    if (!service) return;
+    
+    const serviceId = (service as any)._id || service.id;
+    const hasCompleteData = service.name && service.rate && service.time;
+    
+    if (hasCompleteData) {
+      setFullService(service);
+      return;
+    }
+    
+    // Fetch complete service data
+    console.log(`⏳ Booking: Fetching complete service data for ${serviceId}...`);
+    setLoadingService(true);
+    fetch(`${API_BASE}/api/services/${serviceId}`)
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data && data.name && data.rate) {
+          setFullService(data);
+          console.log(`✅ Booking: Service data loaded`);
+        } else {
+          setFullService(service);
+        }
+      })
+      .catch(e => {
+        console.error('❌ Booking: Error fetching service:', e);
+        setFullService(service);
+      })
+      .finally(() => setLoadingService(false));
+  }, [service]);
+  
+  
+  // Validate that service has required data
+  if (!service || !service.name || !service.rate) {
+    return (
+      <div className="h-screen flex items-center justify-center p-6">
+        <div className="text-center max-w-sm">
+          <div className="text-2xl font-black text-red-600 mb-4">⚠️ Service Data Missing</div>
+          <div className="text-slate-600 font-semibold mb-6">
+            Service details couldn't be loaded. Please go back and try again.
+          </div>
+          <p className="text-sm text-slate-500">Service ID: {(service as any)?._id || service?.id || 'Unknown'}</p>
+        </div>
+      </div>
+    );
+  }
+  
+  
   
   useEffect(() => {
     const token = localStorage.getItem('token');
     const date = formData.date; // use selected date
-    const id = (service as any)._id || service.id;
+    const id = (fullService as any)._id || fullService.id;
     
     console.log(`📅 Date selected: ${date}, Service ID: ${id}`);
     
@@ -91,13 +143,13 @@ const BookingPage: React.FC<Props> = ({ service, lang, onConfirm, getDisplayRate
           { label: '6:00 PM - 7:00 PM', startHour: 18, endHour: 19 }
         ]);
       });
-  }, [service, formData.date]);
+  }, [fullService, formData.date]);
 
   return (
     <div className="p-6 space-y-8 animate-in slide-in-from-bottom-8 duration-300">
       <div className="space-y-2">
         <h2 className="text-3xl font-black text-slate-800">{t.confirmBooking}</h2>
-        <p className="text-slate-500 font-medium">Finalizing your {service.name[lang]}</p>
+        <p className="text-slate-500 font-medium">Finalizing your {fullService.name[lang]}</p>
       </div>
 
       <div className="space-y-6">
@@ -202,24 +254,24 @@ const BookingPage: React.FC<Props> = ({ service, lang, onConfirm, getDisplayRate
         <div className="p-6 bg-slate-50 rounded-[30px] space-y-3">
           <div className="flex justify-between text-slate-500 font-bold uppercase text-[10px]">
             <span>Service Total</span>
-            <span>{getDisplayRate ? getDisplayRate(service) : (() => {
-              const base = typeof service.baseRate === 'number' ? service.baseRate : parseInt(service.rate.replace(/[^\d]/g, ''), 10);
+            <span>{getDisplayRate ? getDisplayRate(fullService) : (() => {
+              const base = typeof fullService.baseRate === 'number' ? fullService.baseRate : parseInt(fullService.rate.replace(/[^\d]/g, ''), 10);
               const userRaw = localStorage.getItem('user');
               const user = userRaw ? JSON.parse(userRaw) : {};
               const isFirstTime = (typeof user.orderCount === 'number' ? user.orderCount === 0 : true);
-              const discounted = service.offerOn || (user.isOfferActive && !user.isOfferUsed && isFirstTime);
+              const discounted = fullService.offerOn || (user.isOfferActive && !user.isOfferUsed && isFirstTime);
               const price = discounted ? Math.round(base * 0.8) : base;
               return `₹${price}`;
             })()}</span>
           </div>
           <div className="flex justify-between text-slate-800 font-black text-lg">
             <span>Grand Total</span>
-            <span className="text-pink-500">{getDisplayRate ? getDisplayRate(service) : (() => {
-              const base = typeof service.baseRate === 'number' ? service.baseRate : parseInt(service.rate.replace(/[^\d]/g, ''), 10);
+            <span className="text-pink-500">{getDisplayRate ? getDisplayRate(fullService) : (() => {
+              const base = typeof fullService.baseRate === 'number' ? fullService.baseRate : parseInt(fullService.rate.replace(/[^\d]/g, ''), 10);
               const userRaw = localStorage.getItem('user');
               const user = userRaw ? JSON.parse(userRaw) : {};
               const isFirstTime = (typeof user.orderCount === 'number' ? user.orderCount === 0 : true);
-              const discounted = service.offerOn || (user.isOfferActive && !user.isOfferUsed && isFirstTime);
+              const discounted = fullService.offerOn || (user.isOfferActive && !user.isOfferUsed && isFirstTime);
               const price = discounted ? Math.round(base * 0.8) : base;
               return `₹${price}`;
             })()}</span>
