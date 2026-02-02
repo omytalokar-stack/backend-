@@ -263,9 +263,35 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
   return (
     <div className="h-full w-full snap-start relative bg-black overflow-hidden" ref={containerRef} style={{ scrollSnapAlign: 'start' }}>
       {/* Video Container */}
-      <div className="h-full w-full flex items-center justify-center bg-black">
-      {/* Overlays */}
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/60 pointer-events-none" />
+      <div className="h-full w-full flex items-center justify-center bg-black relative">
+        {/* Video Element - WITH AUTOPLAY, LOOP, MUTED */}
+        {service.videoUrl ? (
+          <video
+            ref={videoRef}
+            src={service.videoUrl}
+            className="h-full w-full object-cover"
+            autoPlay={true}
+            loop={true}
+            muted={true}
+            playsInline={true}
+            onLoadedMetadata={() => {
+              console.log('✅ Video loaded:', service.videoUrl);
+              if (videoRef.current) {
+                videoRef.current.play().catch((e) => {
+                  console.warn('⚠️ Autoplay blocked:', e);
+                });
+              }
+            }}
+            onError={(e) => {
+              console.error('❌ Video load error:', e);
+            }}
+          />
+        ) : (
+          <div className="text-white font-bold text-center">No video available</div>
+        )}
+
+        {/* Overlays */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/60 pointer-events-none" />
 
       {/* Interactions */}
       <div className="absolute right-4 bottom-32 flex flex-col gap-4 items-center z-10">
@@ -317,7 +343,11 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
                 return `${price}`;
               })())}
             </button>
-          ) : null}
+          ) : (
+            <div className="w-full px-6 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-black text-sm rounded-[25px] shadow-xl text-center">
+              ✨ {t.independentReel || 'Independent Reel'} ✨
+            </div>
+          )}
         </div>
       </div>
       </div>
