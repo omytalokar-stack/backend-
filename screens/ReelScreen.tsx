@@ -431,6 +431,7 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
           ) : null}
         </div>
       </div>
+      </div>
 
       {/* Comments Bottom Sheet (glassmorphism, 60% height) */}
       {showComments && (
