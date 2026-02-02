@@ -544,25 +544,32 @@ const App: React.FC = () => {
           {/* Overlay - appears when drawer is open, click to close */}
           {adminSidebarOpen && (
             <div 
-              onClick={() => setAdminSidebarOpen(false)}
-              className="fixed inset-0 bg-black/60 z-50 transition-opacity duration-300 pointer-events-auto"
+              onClick={() => {
+                console.log('🔍 Overlay clicked, closing sidebar');
+                setAdminSidebarOpen(false);
+              }}
+              className="fixed inset-0 bg-black/60 z-30 transition-opacity duration-300"
+              style={{ pointerEvents: 'auto' }}
             />
           )}
 
           {/* DRAWER MENU - Fixed position, overlays content on mobile */}
           <div
-            onClick={(e) => e.stopPropagation()}
-            className={`fixed top-0 left-0 h-screen w-[280px] bg-white shadow-2xl z-60 transition-all duration-300 ease-out overflow-y-auto ${
+            className={`fixed top-0 left-0 h-screen w-[280px] bg-white shadow-2xl z-40 transition-all duration-300 ease-out overflow-y-auto ${
               adminSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-            }`}>
+            }`}
+            style={{ pointerEvents: adminSidebarOpen ? 'auto' : 'none' }}>
             {/* Drawer Header */}
             <div className="sticky top-0 bg-white border-b border-slate-100 px-4 py-4 flex items-center justify-between">
               <h2 className="text-lg font-black text-slate-800">Admin</h2>
               <button 
-                onClick={() => setAdminSidebarOpen(false)}
+                type="button"
+                onClick={() => {
+                  console.log('🔍 Close button clicked, setting sidebar to false');
+                  setAdminSidebarOpen(false);
+                }}
                 aria-label="Close admin menu"
-                className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-600 pointer-events-auto"
-                style={{ zIndex: 10000 }}
+                className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-600"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
