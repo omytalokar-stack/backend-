@@ -408,9 +408,9 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
         </button>
       </div>
 
-      {/* Left-side Title + Description + Prominent Book Now (5-10% from bottom, full gradient behind text) */}
+      {/* Left-side Title + Description + Prominent Book Now (5-10% from bottom, clean no blur) */}
       <div className="absolute left-4 right-20 bottom-8 z-30 max-w-[70%] text-white pointer-events-auto">
-        <div className="bg-gradient-to-t from-black/80 via-black/50 to-transparent p-5 rounded-2xl backdrop-blur-md">
+        <div className="bg-gradient-to-t from-black/80 via-black/50 to-transparent p-5 rounded-2xl">
           <h3 className="font-black text-xl leading-tight drop-shadow-lg">{localizeField((service as any).serviceName || (service as any).title || (service as any).name || (service as any).service) || 'Service'}</h3>
           {localizeField((service as any).description || (service as any).features) ? (
             <p className="mt-2 text-sm text-white/95 leading-snug drop-shadow-md">{localizeField((service as any).description || (service as any).features)}</p>
@@ -420,7 +420,7 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
             <div className="mt-4">
               <button
                 onClick={(e) => { e.stopPropagation(); onBook(service); }}
-                className="inline-flex items-center gap-3 px-7 py-3 rounded-full font-extrabold text-white text-lg shadow-2xl hover:shadow-[0_0_25px_rgba(255,60,172,0.6)] active:scale-95 transition-all duration-200"
+                className="inline-flex items-center gap-3 px-7 py-3 rounded-full font-extrabold text-white text-lg shadow-lg hover:shadow-[0_0_20px_rgba(255,60,172,0.5)] active:scale-95 transition-all duration-200"
                 style={{ background: 'linear-gradient(135deg,#FF3CAC 0%, #FFD166 100%)' }}
                 title={t.bookNow}
               >
@@ -430,7 +430,6 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
             </div>
           ) : null}
         </div>
-      </div>
       </div>
 
       {/* Comments Bottom Sheet (glassmorphism, 60% height) */}

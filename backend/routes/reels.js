@@ -125,4 +125,61 @@ router.delete('/:reelId/comments/:commentId', authenticateToken, async (req, res
 	}
 });
 
+// Get single reel with metadata
+router.get('/:id', async (req, res) => {
+	try {
+		const reel = await Reel.findById(req.params.id).populate('serviceId', 'name category');
+		if (!reel) {
+			return res.status(404).json({ error: 'Reel not found' });
+		}
+		res.json({
+			_id: reel._id,
+			serviceId: reel.serviceId ? reel.serviceId._id : null,
+			videoUrl: reel.videoUrl || '',
+			description: reel.description || '',
+			likes: reel.likes || 0,
+			views: reel.views || 0,
+			createdAt: reel.createdAt,
+		});
+	} catch (e) {
+		console.error('❌ Error fetching reel:', e.message);
+		res.status(500).json({ error: 'Failed to fetch reel' });
+	}
+});
+
+// Like/Unlike a reel
+router.post('/:id/like', authenticateToken, async (req, res) => {
+	try {
+		const { id } = req.params;
+		const { liked } = req.body;
+		const userId = req.user.userId;
+
+		const reel = await Reel.findById(id);
+		if (!reel) {
+			return res.status(404).json({ error: 'Reel not found' });
+		}
+
+		// Track user likes in a simple array or set (for demo; scale to LikeLog collection if needed)
+		if (!reel.likedByUsers) reel.likedByUsers = [];
+
+		const hasLiked = reel.likedByUsers.includes(userId);
+
+		if (liked && !hasLiked) {
+			reel.likedByUsers.push(userId);
+			reel.likes = (reel.likes || 0) + 1;
+			console.log(`❤️ User ${userId} liked reel ${id}`);
+		} else if (!liked && hasLiked) {
+			reel.likedByUsers = reel.likedByUsers.filter(uid => uid !== userId);
+			reel.likes = Math.max(0, (reel.likes || 1) - 1);
+			console.log(`💔 User ${userId} unliked reel ${id}`);
+		}
+
+		await reel.save();
+		res.json({ likes: reel.likes, message: liked ? 'Liked' : 'Unliked' });
+	} catch (e) {
+		console.error('❌ Error updating like:', e.message);
+		res.status(500).json({ error: 'Failed to update like' });
+	}
+});
+
 module.exports = router;
