@@ -44,7 +44,7 @@ const BookingPage: React.FC<Props> = ({ service, lang, onConfirm, getDisplayRate
     // Fetch complete service data
     console.log(`⏳ Booking: Fetching complete service data for ${serviceId}...`);
     setLoadingService(true);
-    fetch(`${API_BASE}/api/services/${serviceId}`)
+    fetch(`${API_BASE}/api/admin/services-public/${serviceId}`)
       .then(res => res.ok ? res.json() : null)
       .then(data => {
         if (data && data.name && data.rate) {

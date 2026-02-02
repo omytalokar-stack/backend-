@@ -141,6 +141,24 @@ router.get('/services-public', async (req, res) => {
   }
 });
 
+// Public endpoint - get single service by ID (for ProductDetails page)
+router.get('/services-public/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const service = await Service.findById(id);
+    
+    if (!service) {
+      return res.status(404).json({ error: 'Service not found' });
+    }
+    
+    console.log(`✅ Fetched service: ${service.name} (${id})`);
+    res.json(service);
+  } catch (err) {
+    console.error('❌ Error fetching service:', err.message);
+    res.status(500).json({ error: 'Failed to fetch service' });
+  }
+});
+
 router.get('/services', authenticateToken, ensureAdmin, async (req, res) => {
   try {
     const list = await Service.find().sort({ createdAt: -1 });

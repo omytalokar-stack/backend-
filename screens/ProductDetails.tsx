@@ -48,7 +48,7 @@ const ProductDetails: React.FC<Props> = ({ service, lang, onBook, displayRate })
     // Otherwise fetch from API (important for Reel-sourced bookings)
     console.log(`⏳ Fetching complete service data for ${serviceId}...`);
     setLoading(true);
-    fetch(`${API_BASE}/api/services/${serviceId}`)
+    fetch(`${API_BASE}/api/admin/services-public/${serviceId}`)
       .then(res => {
         if (!res.ok) throw new Error(`${res.status}`);
         return res.json();
