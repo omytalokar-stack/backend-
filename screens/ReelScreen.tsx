@@ -178,22 +178,38 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
   // Fetch comments from backend when component mounts or when showComments changes
   React.useEffect(() => {
     if (showComments && reelId) {
+      setComments([]); // Clear old comments immediately
       fetchComments();
+    } else {
+      // Clear comments when closing the comment sheet
+      setComments([]);
+      setCommentInput('');
     }
   }, [showComments, reelId]);
 
   const fetchComments = async () => {
+    if (!reelId) {
+      setComments([]);
+      setLoadingComments(false);
+      return;
+    }
+    
     setLoadingComments(true);
     try {
       const response = await fetch(`${API_BASE}/api/reels/${reelId}/comments`);
       if (response.ok) {
         const data = await response.json();
-        setComments(Array.isArray(data) ? data : []);
-        console.log(`✅ Loaded ${data.length} comments for reel ${reelId}`);
+        const safeComments = Array.isArray(data) ? data : [];
+        // Ensure all comments belong to this reel
+        const filtered = safeComments.filter((c: any) => c.reelId === reelId);
+        setComments(filtered);
+        console.log(`✅ Loaded ${filtered.length} comments for reel ${reelId}`);
+      } else {
+        console.warn(`⚠️ Failed to fetch comments: ${response.status}`);
+        setComments([]);
       }
     } catch (e) {
       console.error('❌ Error fetching comments:', e);
-      // Fallback to empty array
       setComments([]);
     } finally {
       setLoadingComments(false);

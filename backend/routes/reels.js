@@ -35,9 +35,24 @@ router.get('/', async (req, res) => {
 router.get('/:reelId/comments', async (req, res) => {
 	try {
 		const { reelId } = req.params;
-		const comments = await Comment.find({ reelId })
+		
+		// Validate reelId is a valid MongoDB ObjectId
+		if (!reelId || reelId.length !== 24) {
+			return res.status(400).json({ error: 'Invalid reel ID format' });
+		}
+		
+		// Verify reel exists
+		const reel = await Reel.findById(reelId);
+		if (!reel) {
+			return res.status(404).json({ error: 'Reel not found' });
+		}
+		
+		// Fetch ONLY comments for this specific reel
+		const comments = await Comment.find({ reelId: reelId })
 			.sort({ createdAt: -1 })
-			.select('-updatedAt');
+			.select('-updatedAt')
+			.lean();
+		
 		console.log(`✅ Fetched ${comments.length} comments for reel ${reelId}`);
 		res.json(comments);
 	} catch (e) {
@@ -179,6 +194,38 @@ router.post('/:id/like', authenticateToken, async (req, res) => {
 	} catch (e) {
 		console.error('❌ Error updating like:', e.message);
 		res.status(500).json({ error: 'Failed to update like' });
+	}
+});
+
+// Admin: Get all comments with reel details for moderation
+router.get('/admin/all-comments', authenticateToken, async (req, res) => {
+	try {
+		// Check if user is admin
+		if (req.user.role !== 'admin') {
+			return res.status(403).json({ error: 'Admin access required' });
+		}
+
+		// Fetch all comments with populated reel info
+		const comments = await Comment.find()
+			.populate('reelId', 'videoUrl description views likes')
+			.sort({ createdAt: -1 })
+			.lean();
+
+		const enriched = comments.map(c => ({
+			...c,
+			reelInfo: c.reelId ? {
+				id: c.reelId._id,
+				description: c.reelId.description,
+				views: c.reelId.views,
+				likes: c.reelId.likes
+			} : null
+		}));
+
+		console.log(`✅ Fetched ${comments.length} comments with reel info for admin`);
+		res.json(enriched);
+	} catch (e) {
+		console.error('❌ Error fetching admin comments:', e.message);
+		res.status(500).json({ error: 'Failed to fetch comments' });
 	}
 });
 
