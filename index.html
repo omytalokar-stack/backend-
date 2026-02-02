@@ -5,8 +5,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Princess App</title>
-    <!-- Use built Tailwind via PostCSS (do not use CDN in production) -->
-    <link rel="icon" href="/icons/icon-192.svg">
+    <!-- Favicon for browsers -->
+    <link rel="icon" href="/icons/icon-192.png" type="image/png">
+    <link rel="icon" href="/icons/icon-192.svg" type="image/svg+xml">
+    <!-- Apple touch icon for iOS home screen -->
+    <link rel="apple-touch-icon" href="/icons/icon-192.png">
+    <!-- Chrome for Android -->
+    <meta name="theme-color" content="#D4AF37">
     <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&family=Playfair+Display:wght@400;600;700;900&family=Great+Vibes&display=swap" rel="stylesheet">
     <style>
         body {
@@ -51,7 +56,6 @@
         }
     </style>
     <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#D4AF37">
     <script type="importmap">
 {
   "imports": {
