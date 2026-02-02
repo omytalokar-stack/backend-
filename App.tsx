@@ -825,21 +825,45 @@ const App: React.FC = () => {
             reelServices = JSON.parse(stored);
             sessionStorage.removeItem('reelServices'); // clear after use
           } else {
-            // Map public reels into a lightweight service-like shape for the ReelScreen
-            reelServices = (publicReels || []).map(r => ({
-              id: r._id,
-              name: { en: r.description || 'Reel', hi: '' },
-              features: { en: '', hi: '' },
-              time: '0 min',
-              rate: '₹0',
-              videoUrl: r.videoUrl,
-              thumbnail: '',
-              likes: (r as any).likes || 0,
-              views: (r as any).views || 0,
-              // expose linked service id (if any) to the ReelScreen
-              serviceId: (r as any).serviceId || null,
-              baseRate: 0
-            }));
+            // Map public reels with COMPLETE service data into Service objects
+            // The backend now returns full service data in each reel
+            reelServices = (publicReels || []).map(r => {
+              // Check if reel has complete service data from backend
+              if (r.name && r.rate && r.time) {
+                // Reel already has complete service data - use it directly
+                return {
+                  id: r._id || r.id,
+                  name: r.name,
+                  features: r.features || r.description,
+                  time: r.time,
+                  rate: r.rate,
+                  baseRate: r.baseRate || 0,
+                  durationMinutes: r.durationMinutes || 0,
+                  videoUrl: r.videoUrl || '',
+                  thumbnail: r.thumbnail || r.imageUrl || '',
+                  description: r.description || r.features || '',
+                  category: r.category || '',
+                  imageUrl: r.imageUrl || '',
+                  likes: r.likes || 0,
+                  views: r.views || 0,
+                  serviceId: r.serviceId || null,
+                  offerOn: r.offerOn || false
+                };
+              } else {
+                // Fallback for reels without complete data
+                return {
+                  id: r._id || r.id,
+                  name: r.serviceName || { en: 'Service', hi: 'सेवा' },
+                  features: r.description || { en: 'Loading...', hi: 'लोड हो रहा है...' },
+                  time: '60 min',
+                  rate: '₹0',
+                  videoUrl: r.videoUrl || '',
+                  thumbnail: r.thumbnail || '',
+                  serviceId: r.serviceId || null,
+                  baseRate: 0
+                };
+              }
+            });
           }
           return <ReelScreen lang={lang} services={reelServices} onBook={handleServiceSelect} onBack={handleBackNavigation} onClose={() => setActiveTab('home')} getDisplayRate={getDisplayRate} />;
         }
