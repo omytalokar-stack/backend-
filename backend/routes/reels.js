@@ -11,19 +11,48 @@ const User = require('../models/User');
 
 router.post('/save', authenticateToken, authController.saveReel);
 
-// Public: list reels (with analytics)
+// Public: list reels (with full service data)
 router.get('/', async (req, res) => {
 	try {
-		const list = await Reel.find().populate('serviceId', 'name category').sort({ createdAt: -1 });
-		const safe = list.map(r => ({
-			_id: r._id,
-			serviceId: r.serviceId ? r.serviceId._id : null,
-			videoUrl: r.videoUrl || '',
-			description: r.description || '',
-			likes: r.likes || 0,
-			views: r.views || 0,
-			createdAt: r.createdAt,
-		}));
+		// Populate ALL service fields so Reel has complete data
+		const list = await Reel.find()
+			.populate('serviceId', 'name description category baseRate durationMinutes imageUrl videoUrl offerOn')
+			.sort({ createdAt: -1 });
+		
+		const safe = list.map(r => {
+			// Build complete service object from Reel + populated Service
+			const serviceData = r.serviceId ? {
+				_id: r.serviceId._id,
+				id: r.serviceId._id.toString(),
+				name: { en: r.serviceId.name, hi: r.serviceId.name },
+				features: { en: r.serviceId.description, hi: r.serviceId.description },
+				description: { en: r.serviceId.description, hi: r.serviceId.description },
+				category: r.serviceId.category,
+				rate: `₹${r.serviceId.baseRate || 0}`,
+				baseRate: r.serviceId.baseRate || 0,
+				time: `${r.serviceId.durationMinutes || 60} min`,
+				durationMinutes: r.serviceId.durationMinutes || 60,
+				thumbnail: r.serviceId.imageUrl,
+				imageUrl: r.serviceId.imageUrl,
+				videoUrl: r.serviceId.videoUrl,
+				offerOn: r.serviceId.offerOn
+			} : null;
+
+			return {
+				_id: r._id,
+				id: r._id.toString(),
+				serviceId: r.serviceId ? r.serviceId._id : null,
+				videoUrl: r.videoUrl || '',
+				description: r.description || '',
+				likes: r.likes || 0,
+				views: r.views || 0,
+				createdAt: r.createdAt,
+				// Include complete service object for ProductDetails
+				...serviceData,
+				// Keep service as nested object too for backward compatibility
+				service: serviceData
+			};
+		});
 		res.json(safe);
 	} catch (e) {
 		console.error('❌ Error fetching reels:', e.message);
