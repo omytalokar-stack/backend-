@@ -27,7 +27,8 @@ router.get('/available', authenticateToken, async (req, res) => {
     }
     if (!service) return res.status(404).json({ error: 'Service not found' });
     
-    const duration = Math.max(1, Math.round(service.durationMinutes / 60));
+    // Calculate exact duration in minutes - support both full hours and minutes like 50, 75, 90 etc
+    const durationMinutes = service.durationMinutes || 60;
     
     // For a single worker setup we must consider bookings across all services
     const bookings = await Booking.find({ date });
@@ -44,33 +45,55 @@ router.get('/available', authenticateToken, async (req, res) => {
     const currentHour = now.getHours();
     const isToday = date === today;
     
-    console.log(`📥 Fetching available slots for date: ${date}, serviceId: ${serviceId}, isToday: ${isToday}, currentHour: ${currentHour}`);
+    console.log(`📥 Fetching available slots for date: ${date}, serviceId: ${serviceId}, duration: ${durationMinutes}min, isToday: ${isToday}, currentHour: ${currentHour}`);
+    
+    // Helper: Convert decimal hours (like 0.83 for 50 min) to minutes
+    const hoursToMinutes = (decimalHours) => Math.round(decimalHours * 60);
     
     // Generate all slots from 1 PM to 7 PM (13:00-19:00)
     HOURS_START.forEach(h => {
-      const end = h + duration;
-      if (end > 19) return; // ensure end time within 19:00
+      // Calculate end time: start hour + duration in fractional hours
+      const durationHours = durationMinutes / 60;
+      const endHourDecimal = h + durationHours;
       
-      // Check if this slot is already booked
+      // If end time exceeds 19:00 (7 PM), skip this slot
+      if (endHourDecimal > 19) {
+        console.log(`⏭️ Slot ${h}:00 would end at ${convert24To12(Math.floor(endHourDecimal))} (exceeds 19:00 limit)`);
+        return;
+      }
+      
+      // Check if this slot overlaps with any booked hours
       let ok = true;
-      for (let k = h; k < end; k++) {
+      for (let k = h; k < Math.ceil(endHourDecimal); k++) {
         if (blocked.has(k)) { ok = false; break; }
       }
       
       // Filter out past/current slots if selecting today - only show slots where h > currentHour
       if (isToday && h <= currentHour) {
-        console.log(`⏭️ Skipping slot ${h}:00-${end}:00 (current hour: ${currentHour})`);
+        console.log(`⏭️ Skipping slot ${h}:00 (current hour: ${currentHour})`);
         return;
       }
       
       // Only show slots that are available (not booked)
       if (ok) {
         const startLabel = convert24To12(h);
-        const endLabel = convert24To12(end);
-        slots.push({ startHour: h, endHour: end, label: `${startLabel} - ${endLabel}` });
-        console.log(`✅ Slot available: ${startLabel} - ${endLabel}`);
+        const endMinutes = (durationMinutes % 60);
+        const endHour = Math.floor(endHourDecimal);
+        const endLabel = endMinutes === 0 
+          ? convert24To12(endHour) 
+          : `${endHour < 12 ? endHour : endHour === 12 ? 12 : endHour - 12}:${String(endMinutes).padStart(2, '0')} ${endHour >= 12 ? 'PM' : 'AM'}`;
+        
+        // Store with integer endHour (ceiling of decimal) and keep durationMinutes for reference
+        slots.push({ 
+          startHour: h, 
+          endHour: Math.ceil(endHourDecimal), 
+          durationMinutes, 
+          label: `${startLabel} - ${endLabel}` 
+        });
+        console.log(`✅ Slot available: ${startLabel} - ${endLabel} (${durationMinutes}min service)`);
       } else {
-        console.log(`❌ Slot booked: ${convert24To12(h)} - ${convert24To12(end)}`);
+        const endHourDecimal2 = h + durationMinutes / 60;
+        console.log(`❌ Slot booked: ${convert24To12(h)} - ${convert24To12(Math.floor(endHourDecimal2))}`);
       }
     });
     

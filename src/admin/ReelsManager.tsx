@@ -9,8 +9,18 @@ type ReelItem = {
   replies?: string[];
 };
 
+type CommentItem = {
+  _id: string;
+  reelId: string;
+  userId: string;
+  userName: string;
+  text: string;
+  createdAt: string;
+};
+
 const ReelsManager: React.FC<{ showFormDefault?: boolean }> = ({ showFormDefault }) => {
   const [reels, setReels] = useState<ReelItem[]>([]);
+  const [comments, setComments] = useState<CommentItem[]>([]);
   const [form, setForm] = useState({ videoUrl: '', description: '' });
   const [replyText, setReplyText] = useState<Record<string, string>>({});
   const [videoFile, setVideoFile] = useState<File | null>(null);
@@ -18,6 +28,8 @@ const ReelsManager: React.FC<{ showFormDefault?: boolean }> = ({ showFormDefault
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [analyticsText, setAnalyticsText] = useState<Record<string, string>>({});
   const [showForm, setShowForm] = useState<boolean>(!!showFormDefault);
+  const [activeTab, setActiveTab] = useState<'reels' | 'comments'>('reels');
+  const [loadingComments, setLoadingComments] = useState(false);
   useEffect(() => { setShowForm(!!showFormDefault); }, [showFormDefault]);
 
   const load = async () => {
@@ -51,6 +63,42 @@ const ReelsManager: React.FC<{ showFormDefault?: boolean }> = ({ showFormDefault
   useEffect(() => {
     load();
   }, []);
+
+  const loadAllComments = async () => {
+    setLoadingComments(true);
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      
+      // Fetch comments for each reel
+      const allComments: CommentItem[] = [];
+      for (const reel of reels) {
+        try {
+          const response = await fetch(`${API_BASE}/api/reels/${reel.id}/comments`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          if (response.ok) {
+            const reelComments = await response.json();
+            allComments.push(...reelComments);
+          }
+        } catch (e) {
+          console.error(`❌ Failed to fetch comments for reel ${reel.id}:`, e);
+        }
+      }
+      setComments(allComments.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+      console.log(`✅ Loaded ${allComments.length} comments from all reels`);
+    } catch (e) {
+      console.error('❌ Error loading comments:', e);
+    } finally {
+      setLoadingComments(false);
+    }
+  };
+
+  React.useEffect(() => {
+    if (activeTab === 'comments' && comments.length === 0) {
+      loadAllComments();
+    }
+  }, [activeTab]);
 
   const saveLocal = (next: ReelItem[]) => {
     localStorage.setItem('adminReels', JSON.stringify(next));
@@ -155,6 +203,28 @@ const ReelsManager: React.FC<{ showFormDefault?: boolean }> = ({ showFormDefault
     saveLocal(next);
   };
 
+  const deleteComment = async (commentId: string, reelId: string) => {
+    if (!confirm('Delete this comment?')) return;
+    
+    const token = localStorage.getItem('token');
+    try {
+      const response = await fetch(`${API_BASE}/api/reels/${reelId}/comments/${commentId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token!}` }
+      });
+      if (response.ok) {
+        const updated = comments.filter(c => c._id !== commentId);
+        setComments(updated);
+        console.log('✅ Comment deleted');
+      } else {
+        alert('Failed to delete comment');
+      }
+    } catch (e) {
+      console.error('❌ Error deleting comment:', e);
+      alert('Error deleting comment');
+    }
+  };
+
   const editReel = async (id: string) => {
     const target = reels.find(r => r.id === id);
     if (!target) return;
@@ -184,10 +254,25 @@ const ReelsManager: React.FC<{ showFormDefault?: boolean }> = ({ showFormDefault
   return (
     <div className="space-y-4 pb-24">
       <div className="flex items-center justify-between gap-2">
-        <h3 className="text-lg font-black text-slate-800 truncate">Reels</h3>
-        <button onClick={() => setShowForm(v => !v)} className="px-3 py-2 bg-[#FFB7C5] text-white rounded-[15px] font-black active:scale-95 text-sm whitespace-nowrap">
-          {showForm ? 'Close' : 'Add'}
-        </button>
+        <div className="flex gap-2">
+          <button 
+            onClick={() => setActiveTab('reels')}
+            className={`px-4 py-2 rounded-[15px] font-black active:scale-95 text-sm ${activeTab === 'reels' ? 'bg-[#FFB7C5] text-white' : 'bg-slate-200 text-slate-700'}`}
+          >
+            Reels ({reels.length})
+          </button>
+          <button 
+            onClick={() => setActiveTab('comments')}
+            className={`px-4 py-2 rounded-[15px] font-black active:scale-95 text-sm ${activeTab === 'comments' ? 'bg-[#FFB7C5] text-white' : 'bg-slate-200 text-slate-700'}`}
+          >
+            Comments ({comments.length})
+          </button>
+        </div>
+        {activeTab === 'reels' && (
+          <button onClick={() => setShowForm(v => !v)} className="px-3 py-2 bg-[#FFB7C5] text-white rounded-[15px] font-black active:scale-95 text-sm whitespace-nowrap">
+            {showForm ? 'Close' : 'Add Reel'}
+          </button>
+        )}
       </div>
       
       {showForm && (
@@ -259,6 +344,43 @@ const ReelsManager: React.FC<{ showFormDefault?: boolean }> = ({ showFormDefault
           </div>
         ))}
       </div>
+
+      {/* Comments Tab */}
+      {activeTab === 'comments' && (
+        <div className="space-y-2">
+          <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">All Reel Comments ({comments.length})</h4>
+          <div className="flex gap-2 mb-4">
+            <button 
+              onClick={loadAllComments} 
+              className="px-4 py-2 bg-[#FFB7C5] text-white rounded-[10px] font-black active:scale-95 text-sm"
+              disabled={loadingComments}
+            >
+              {loadingComments ? 'Loading...' : 'Refresh'}
+            </button>
+          </div>
+          {comments.length === 0 ? (
+            <div className="p-4 text-center text-slate-500 font-bold">No comments yet</div>
+          ) : (
+            comments.map(c => (
+              <div key={c._id} className="p-4 rounded-2xl border border-slate-200 space-y-2 bg-white shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="font-bold text-slate-800 text-sm">{c.userName}</p>
+                    <p className="text-xs text-slate-500">{new Date(c.createdAt).toLocaleDateString()} {new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                  </div>
+                  <button 
+                    onClick={() => deleteComment(c._id, c.reelId)}
+                    className="px-3 py-1 bg-red-100 text-red-700 rounded-[8px] font-black active:scale-95 text-xs"
+                  >
+                    Delete
+                  </button>
+                </div>
+                <p className="text-slate-700">{c.text}</p>
+              </div>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 };

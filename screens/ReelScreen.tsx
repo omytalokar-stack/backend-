@@ -99,13 +99,37 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
   const [liked, setLiked] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [commentInput, setCommentInput] = useState('');
-  const [comments, setComments] = useState<string[]>(() => {
-    const raw = localStorage.getItem(`comments:${service.id}`);
-    return raw ? JSON.parse(raw) : [];
-  });
+  const [comments, setComments] = useState<any[]>([]);
+  const [loadingComments, setLoadingComments] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const reelId = (service as any)._id || service.id;
+
+  // Fetch comments from backend when component mounts or when showComments changes
+  React.useEffect(() => {
+    if (showComments && reelId) {
+      fetchComments();
+    }
+  }, [showComments, reelId]);
+
+  const fetchComments = async () => {
+    setLoadingComments(true);
+    try {
+      const response = await fetch(`${API_BASE}/api/reels/${reelId}/comments`);
+      if (response.ok) {
+        const data = await response.json();
+        setComments(Array.isArray(data) ? data : []);
+        console.log(`✅ Loaded ${data.length} comments for reel ${reelId}`);
+      }
+    } catch (e) {
+      console.error('❌ Error fetching comments:', e);
+      // Fallback to empty array
+      setComments([]);
+    } finally {
+      setLoadingComments(false);
+    }
+  };
 
   // Use Intersection Observer to auto-play when 50%+ visible
   React.useEffect(() => {
@@ -203,13 +227,37 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
     } catch {}
   };
 
-  const handleAddComment = () => {
+  const handleAddComment = async () => {
     const text = commentInput.trim();
     if (!text) return;
-    const next = [text, ...comments];
-    setComments(next);
-    localStorage.setItem(`comments:${service.id}`, JSON.stringify(next));
-    setCommentInput('');
+
+    const token = localStorage.getItem('token');
+    const userRaw = localStorage.getItem('user');
+    const user = userRaw ? JSON.parse(userRaw) : {};
+    const userName = user.name || 'User';
+
+    try {
+      const response = await fetch(`${API_BASE}/api/reels/${reelId}/comments`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ text, userName })
+      });
+
+      if (response.ok) {
+        const newComment = await response.json();
+        setComments([newComment, ...comments]);
+        setCommentInput('');
+        console.log('✅ Comment posted successfully');
+      } else {
+        alert('Failed to post comment');
+      }
+    } catch (e) {
+      console.error('❌ Error posting comment:', e);
+      alert('Error posting comment');
+    }
   };
 
   return (
@@ -286,7 +334,7 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
       {showComments && (
         <div className="absolute inset-x-0 bottom-0 bg-white rounded-t-[30px] border-t-4 border-slate-100 shadow-2xl p-4 space-y-3">
           <div className="flex items-center justify-between">
-            <h4 className="font-black text-slate-800">Comments</h4>
+            <h4 className="font-black text-slate-800">Comments ({comments.length})</h4>
             <button onClick={() => setShowComments(false)} className="text-slate-400 font-bold">Close</button>
           </div>
           <div className="flex gap-2">
@@ -295,15 +343,24 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
               onChange={(e) => setCommentInput(e.target.value)}
               placeholder="Write a comment..."
               className="flex-1 px-3 py-2 border-2 border-slate-200 rounded-[20px]"
+              disabled={loadingComments}
             />
-            <button onClick={handleAddComment} className="px-4 py-2 bg-[#FFB7C5] text-white rounded-[20px] font-black active:scale-95">Post</button>
+            <button onClick={handleAddComment} className="px-4 py-2 bg-[#FFB7C5] text-white rounded-[20px] font-black active:scale-95" disabled={loadingComments}>Post</button>
           </div>
           <div className="space-y-2 max-h-48 overflow-y-auto">
-            {comments.length === 0 ? (
-              <p className="text-slate-400 text-sm font-bold">No comments yet</p>
+            {loadingComments ? (
+              <p className="text-slate-400 text-sm font-bold">Loading comments...</p>
+            ) : comments.length === 0 ? (
+              <p className="text-slate-400 text-sm font-bold">No comments yet. Be the first!</p>
             ) : (
-              comments.map((c, i) => (
-                <div key={i} className="p-2 border-2 border-slate-100 rounded-[15px] text-slate-700">{c}</div>
+              comments.map((c) => (
+                <div key={c._id || c} className="p-3 border-2 border-slate-100 rounded-[15px] space-y-1">
+                  <div className="flex justify-between items-start">
+                    <p className="font-bold text-slate-700 text-sm">{c.userName || 'User'}</p>
+                    <p className="text-xs text-slate-400">{c.createdAt ? new Date(c.createdAt).toLocaleDateString() : ''}</p>
+                  </div>
+                  <p className="text-slate-700 text-sm">{typeof c === 'string' ? c : c.text}</p>
+                </div>
               ))
             )}
           </div>
