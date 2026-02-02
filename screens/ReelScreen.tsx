@@ -89,11 +89,42 @@ const ReelScreen: React.FC<Props> = ({ lang, services, onBook, onClose, onBack, 
       </div>
       
       {validReels.map((service, idx) => (
-        <ReelItem key={`${(service as any)._id || service.id}-${idx}`} service={service} lang={lang} t={t} onBook={onBook} getDisplayRate={getDisplayRate} />
+        <ErrorBoundary key={`${(service as any)._id || service.id}-${idx}`}>
+          <ReelItem service={service} lang={lang} t={t} onBook={onBook} getDisplayRate={getDisplayRate} />
+        </ErrorBoundary>
       ))}
     </div>
   );
 };
+
+// Simple Error Boundary to prevent full app crash when a Reel item throws
+class ErrorBoundary extends React.Component<any, { hasError: boolean }> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: any, info: any) {
+    console.error('Reel ErrorBoundary caught:', error, info);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="h-screen w-full flex items-center justify-center bg-black text-white">
+          <div className="text-center">
+            <div className="font-bold">Something went wrong with this reel.</div>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s: Service) => void; getDisplayRate?: (service: Service) => string }> = ({ service, lang, t, onBook, getDisplayRate }) => {
   const [liked, setLiked] = useState(false);
@@ -105,6 +136,20 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const reelId = (service as any)._id || service.id;
+
+  // Helper to safely localize fields that may be strings or { en, hi } objects
+  const localizeField = (field: any) => {
+    if (field == null) return '';
+    if (typeof field === 'string') return field;
+    if (typeof field === 'object') {
+      try {
+        return field[lang] || field.en || Object.values(field)[0] || '';
+      } catch {
+        return '';
+      }
+    }
+    return String(field);
+  };
 
   // Likes: show count and poll backend so admin changes reflect quickly
   const [likesCount, setLikesCount] = useState<number>((service as any).likes || 0);
@@ -334,9 +379,9 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
       {/* Left-side Title + Description + Prominent Book Now (no big black box, subtle gradient) */}
       <div className="absolute left-4 bottom-24 z-30 max-w-[62%] text-white pointer-events-auto">
         <div className="bg-gradient-to-t from-black/60 via-black/30 to-transparent p-3 rounded-xl backdrop-blur-sm">
-          <h3 className="font-extrabold text-lg leading-tight drop-shadow-md">{(service as any).serviceName || (service as any).title || (service as any).name || (service as any).service || 'Service'}</h3>
-          {service.description ? (
-            <p className="mt-1 text-sm text-white/90 leading-snug drop-shadow-sm">{service.description}</p>
+          <h3 className="font-extrabold text-lg leading-tight drop-shadow-md">{localizeField((service as any).serviceName || (service as any).title || (service as any).name || (service as any).service) || 'Service'}</h3>
+          {localizeField((service as any).description || (service as any).features) ? (
+            <p className="mt-1 text-sm text-white/90 leading-snug drop-shadow-sm">{localizeField((service as any).description || (service as any).features)}</p>
           ) : null}
 
           {(service as any).serviceId ? (
