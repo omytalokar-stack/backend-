@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ErrorBoundary } from '../ErrorBoundary';
 import { API_BASE } from '../api';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Phone, Bell, ArrowLeft } from 'lucide-react';
 
 type BookingItem = {
   _id: string;
@@ -11,9 +11,10 @@ type BookingItem = {
   startHour: number;
   endHour: number;
   status: string;
+  userName?: string;
 };
 type ServiceItem = { _id: string; name: string };
-type UserItem = { _id: string; email?: string; phone?: string };
+type UserItem = { _id: string; email?: string; phone?: string; name?: string };
 
 const OrderManager: React.FC = () => {
   const [orders, setOrders] = useState<BookingItem[]>([]);
@@ -24,6 +25,7 @@ const OrderManager: React.FC = () => {
   const [chartDate, setChartDate] = useState(new Date().toISOString().split('T')[0]);
   const [chartData, setChartData] = useState<any>(null);
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
+  const [detailPageOrder, setDetailPageOrder] = useState<any>(null);
   const token = localStorage.getItem('token');
 
   const load = async () => {
@@ -149,6 +151,14 @@ const OrderManager: React.FC = () => {
     const u = users.find(x => x._id === id);
     if (!u) return id;
     return u.email || u.phone || id;
+  };
+  const getCustomerDetails = (userId: string) => {
+    const u = users.find(x => x._id === userId);
+    return {
+      name: u?.name || 'Unknown Customer',
+      phone: u?.phone || 'No phone',
+      email: u?.email || 'No email'
+    };
   };
   const labelTime = (o: BookingItem) => {
     const convert24To12 = (hour: number) => {
@@ -334,36 +344,125 @@ const OrderManager: React.FC = () => {
               </div>
             )}
           </div>
+        ) : detailPageOrder ? (
+          // DETAIL PAGE VIEW
+          <div className="space-y-4 pb-6 w-full">
+            <button 
+              onClick={() => setDetailPageOrder(null)}
+              className="flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-[10px] text-sm active:scale-95"
+            >
+              <ArrowLeft size={16} />
+              Back to Orders
+            </button>
+
+            <div className="p-5 rounded-2xl border border-slate-200 bg-white shadow-lg space-y-5">
+              {/* Customer Info - PROMINENT */}
+              <div className="border-b border-slate-200 pb-4">
+                <div className="text-3xl font-black text-slate-900">{getCustomerDetails(detailPageOrder.userId).name}</div>
+                <div className="text-2xl font-bold text-green-600 mt-1">📱 {getCustomerDetails(detailPageOrder.userId).phone}</div>
+                <div className="text-xs text-slate-500 mt-2 font-bold">Order ID: {detailPageOrder._id.slice(-8).toUpperCase()}</div>
+                <div className="text-xs text-slate-500 font-bold">{getCustomerDetails(detailPageOrder.userId).email}</div>
+              </div>
+
+              {/* Service Details */}
+              <div className="space-y-3">
+                <div className="bg-indigo-50 p-3 rounded-[12px]">
+                  <div className="text-xs font-bold text-slate-500 uppercase tracking-wide">Service</div>
+                  <div className="text-lg font-black text-slate-800 mt-1">{nameByService(detailPageOrder.serviceId)}</div>
+                </div>
+
+                {/* Date & Time */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-teal-50 p-3 rounded-[12px]">
+                    <div className="text-xs font-bold text-slate-500 uppercase">Date</div>
+                    <div className="text-base font-black text-slate-800 mt-1">{new Date(detailPageOrder.date).toLocaleDateString()}</div>
+                  </div>
+                  <div className="bg-teal-50 p-3 rounded-[12px]">
+                    <div className="text-xs font-bold text-slate-500 uppercase">Time</div>
+                    <div className="text-base font-black text-slate-800 mt-1">{labelTime(detailPageOrder)}</div>
+                  </div>
+                </div>
+
+                {/* Status */}
+                <div className={`p-3 rounded-[12px] text-center ${detailPageOrder.status === 'Confirmed' ? 'bg-green-100' : detailPageOrder.status === 'Pending' ? 'bg-yellow-100' : 'bg-slate-100'}`}>
+                  <div className="text-xs font-bold text-slate-500 uppercase">Status</div>
+                  <div className={`text-lg font-black mt-1 ${detailPageOrder.status === 'Confirmed' ? 'text-green-600' : detailPageOrder.status === 'Pending' ? 'text-yellow-600' : 'text-slate-600'}`}>
+                    {detailPageOrder.status === 'Confirmed' ? '✅' : detailPageOrder.status === 'Pending' ? '⏳' : '🔔'} {detailPageOrder.status}
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="border-t border-slate-200 pt-5 space-y-3">
+                <button 
+                  onClick={() => handleNotification(detailPageOrder)}
+                  className="w-full py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-black rounded-[12px] flex items-center justify-center gap-2 active:scale-95 text-base transition-all"
+                >
+                  <Bell size={20} />
+                  Send Notification
+                </button>
+
+                <button 
+                  onClick={() => handleCall(getCustomerDetails(detailPageOrder.userId).phone)}
+                  className="w-full py-3 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-black rounded-[12px] flex items-center justify-center gap-2 active:scale-95 text-base transition-all"
+                >
+                  <Phone size={20} />
+                  Call Customer
+                </button>
+
+                <button 
+                  onClick={() => {
+                    if (window.confirm('Delete this order?')) {
+                      handleDelete(detailPageOrder._id);
+                      setDetailPageOrder(null);
+                    }
+                  }}
+                  className="w-full py-3 bg-red-100 hover:bg-red-200 text-red-700 font-black rounded-[12px] active:scale-95 text-base transition-all"
+                >
+                  🗑️ Delete Order
+                </button>
+              </div>
+            </div>
+          </div>
         ) : (
+          // LIST VIEW
           <div className="space-y-2 w-full">
             {orders.length === 0 ? (
               <div className="text-center py-8 text-slate-500 text-sm">No orders yet</div>
             ) : (
-              orders.map(o => (
-                <div key={o._id} className="p-3 rounded-xl border border-slate-200 bg-white shadow-sm hover:shadow-md transition-shadow w-full overflow-hidden">
-                  <div className="flex flex-col gap-2">
-                    <div className="flex justify-between items-start gap-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="text-base font-black text-slate-800 truncate">{nameByService(o.serviceId)}</div>
-                        <div className="text-xs font-bold text-slate-600 mt-0.5 truncate">{userLabel(o.userId)}</div>
+              orders.map(o => {
+                const customer = getCustomerDetails(o.userId);
+                return (
+                  <div 
+                    key={o._id} 
+                    onClick={() => setDetailPageOrder(o)}
+                    className="p-4 rounded-xl border border-slate-200 bg-white shadow-sm hover:shadow-lg hover:border-slate-300 transition-all cursor-pointer active:scale-98 w-full overflow-hidden"
+                  >
+                    <div className="flex flex-col gap-3">
+                      {/* Customer Name & Phone - LARGEST */}
+                      <div>
+                        <div className="text-2xl font-black text-slate-900 leading-tight">{customer.name}</div>
+                        <div className="text-lg font-bold text-green-600 mt-0.5">📱 {customer.phone}</div>
                       </div>
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-black text-white shadow-md flex-shrink-0 whitespace-nowrap ${o.status === 'Confirmed' ? 'bg-green-500' : o.status === 'Pending' ? 'bg-yellow-500' : 'bg-slate-400'}`}>{o.status}</span>
-                    </div>
-                    
-                    <div className="flex items-center gap-2 text-xs font-bold text-slate-600">
-                      <span className="bg-indigo-100 text-indigo-700 px-2.5 py-1 rounded-full flex-shrink-0 whitespace-nowrap">{labelTime(o)}</span>
-                      <span className="text-slate-500 truncate">{new Date(o.date).toLocaleDateString()}</span>
-                    </div>
-                    
-                    <div className="flex items-center justify-between gap-2 pt-2">
-                      <button onClick={() => handleCall(userLabel(o.userId))} className="flex-1 py-2 bg-green-500 hover:bg-green-600 text-white font-bold text-sm rounded-[10px] active:scale-95">📞 Call</button>
-                      <button onClick={() => handleDelete(o._id)} className="py-2 px-3 bg-red-100 hover:bg-red-200 text-red-700 font-bold text-sm rounded-[10px] active:scale-95">
-                        <Trash2 size={16} />
-                      </button>
+
+                      {/* Service & Order ID - Small in corner */}
+                      <div className="flex justify-between items-start gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-bold text-slate-600 truncate">{nameByService(o.serviceId)}</div>
+                          <div className="text-xs text-slate-400 truncate">Order: {o._id.slice(-6).toUpperCase()}</div>
+                        </div>
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold text-white shadow-sm flex-shrink-0 whitespace-nowrap ${o.status === 'Confirmed' ? 'bg-green-500' : o.status === 'Pending' ? 'bg-yellow-500' : 'bg-slate-400'}`}>{o.status}</span>
+                      </div>
+                      
+                      {/* Date & Time */}
+                      <div className="flex items-center gap-2 text-xs font-bold text-slate-600">
+                        <span className="bg-indigo-100 text-indigo-700 px-2.5 py-1 rounded-full flex-shrink-0 whitespace-nowrap">{labelTime(o)}</span>
+                        <span className="text-slate-500 truncate">{new Date(o.date).toLocaleDateString()}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         )}
