@@ -545,14 +545,14 @@ const App: React.FC = () => {
           {adminSidebarOpen && (
             <div 
               onClick={() => setAdminSidebarOpen(false)}
-              className="fixed inset-0 bg-black/50 z-40 transition-opacity duration-300 pointer-events-auto"
+              className="fixed inset-0 bg-black/60 z-50 transition-opacity duration-300 pointer-events-auto"
             />
           )}
 
           {/* DRAWER MENU - Fixed position, overlays content on mobile */}
           <div
             onClick={(e) => e.stopPropagation()}
-            className={`fixed top-0 left-0 h-screen w-[280px] bg-white shadow-2xl z-50 transition-all duration-300 ease-out overflow-y-auto ${
+            className={`fixed top-0 left-0 h-screen w-[280px] bg-white shadow-2xl z-60 transition-all duration-300 ease-out overflow-y-auto ${
               adminSidebarOpen ? 'translate-x-0' : '-translate-x-full'
             }`}>
             {/* Drawer Header */}
@@ -562,7 +562,7 @@ const App: React.FC = () => {
                 onClick={() => setAdminSidebarOpen(false)}
                 aria-label="Close admin menu"
                 className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-600 pointer-events-auto"
-                style={{ zIndex: 999 }}
+                style={{ zIndex: 10000 }}
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
