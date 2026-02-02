@@ -417,6 +417,21 @@ router.get('/orders', authenticateToken, ensureAdmin, async (req, res) => {
   }
 });
 
+// Delete a booking (admin) - permanently removes booking and frees up the slot
+router.delete('/orders/:id', authenticateToken, ensureAdmin, async (req, res) => {
+  try {
+    const bookingId = req.params.id;
+    const b = await Booking.findByIdAndDelete(bookingId);
+    if (!b) return res.status(404).json({ error: 'Booking not found' });
+    console.log(`🗑️ Booking deleted by admin: ${bookingId}`);
+    // No additional slot state to update - slots are derived from existing bookings
+    res.json({ deleted: true, id: bookingId });
+  } catch (err) {
+    console.error('❌ Failed to delete booking:', err);
+    res.status(500).json({ error: 'Failed to delete booking' });
+  }
+});
+
 router.post('/cleanup-orders', authenticateToken, ensureAdmin, async (req, res) => {
   const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
   const r = await Booking.deleteMany({ status: 'Done', updatedAt: { $lt: cutoff } });

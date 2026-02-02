@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ErrorBoundary } from '../ErrorBoundary';
 import { API_BASE } from '../api';
+import { Trash2 } from 'lucide-react';
 
 type BookingItem = {
   _id: string;
@@ -76,6 +77,35 @@ const OrderManager: React.FC = () => {
     load();
   };
 
+  const handleDelete = async (orderId: string) => {
+    const ok = window.confirm('Are you sure you want to delete this order?');
+    if (!ok) return;
+    if (!token) return alert('❌ Not authenticated');
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/orders/${orderId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        credentials: 'include'
+      });
+      if (res.ok) {
+        alert('✅ Order deleted');
+        // Close modal if it was the selected booking
+        if (selectedBooking && selectedBooking._id === orderId) setSelectedBooking(null);
+        // Reload orders and refresh chart if visible
+        await load();
+        if (view === 'chart') {
+          try { await loadChart(); } catch (e) { console.warn('Chart reload failed after delete', e); }
+        }
+      } else {
+        const err = await res.json().catch(() => ({ error: 'Unknown' }));
+        alert('❌ Failed to delete order: ' + (err.error || res.statusText));
+      }
+    } catch (err) {
+      console.error('Delete error:', err);
+      alert('❌ Delete request failed');
+    }
+  };
+
   const loadChart = async () => {
     if (!chartServiceId || !chartDate || !token) {
       console.warn('⚠️ Missing: serviceId, date, or token');
@@ -111,8 +141,9 @@ const OrderManager: React.FC = () => {
   const nameByService = (id: string) => {
     const service = services.find(s => s._id === id);
     if (!service) return id;
-    if (typeof service.name === 'object') return service.name?.en || service.name?.hi || 'Unknown';
-    return service.name || id;
+    const svcName = (service && (service as any).name) || null;
+    if (svcName && typeof svcName === 'object') return svcName.en || svcName.hi || 'Unknown';
+    return svcName || id;
   };
   const userLabel = (id: string) => {
     const u = users.find(x => x._id === id);
@@ -319,7 +350,16 @@ const OrderManager: React.FC = () => {
                       <div className="font-bold text-slate-800 text-sm truncate">{userLabel(o.userId)}</div>
                       <div className="text-xs text-slate-500 line-clamp-2">{nameByService(o.serviceId)}</div>
                     </div>
-                    <span className={`px-2.5 py-1.5 rounded-[10px] text-xs font-black whitespace-nowrap ${o.status === 'Completed' ? 'bg-green-100 text-green-700' : o.status === 'Done' ? 'bg-teal-100 text-teal-700' : o.status === 'Scheduled' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'}`}>{o.status}</span>
+                    <div className="flex items-center gap-2">
+                      <span className={`px-2.5 py-1.5 rounded-[10px] text-xs font-black whitespace-nowrap ${o.status === 'Completed' ? 'bg-green-100 text-green-700' : o.status === 'Done' ? 'bg-teal-100 text-teal-700' : o.status === 'Scheduled' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'}`}>{o.status}</span>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDelete(o._id); }}
+                        title="Delete order"
+                        className="p-2 rounded-full text-red-500 hover:bg-red-50"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
                   </div>
                   <div className="text-xs text-slate-600 bg-slate-50 p-2.5 rounded-[10px]">
                     📅 {o.date} • 🕐 {labelTime(o)}
