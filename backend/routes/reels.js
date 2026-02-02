@@ -4,6 +4,10 @@ const authController = require('../controllers/authController');
 const { authenticateToken } = require('../middleware/auth');
 const Reel = require('../models/Reel');
 const Comment = require('../models/Comment');
+const PushSubscription = require('../models/PushSubscription');
+const webpush = require('web-push');
+const Notification = require('../models/Notification');
+const User = require('../models/User');
 
 router.post('/save', authenticateToken, authController.saveReel);
 
@@ -67,6 +71,27 @@ router.post('/:reelId/comments', authenticateToken, async (req, res) => {
 		});
 
 		console.log(`✅ Comment added to reel ${reelId}: ${text.substring(0, 50)}...`);
+
+		// Notify admins about new comment (lightweight)
+		try {
+			const msg = `New comment on reel ${reelId}: ${text.substring(0, 80)}`;
+			const admins = await User.find({ role: 'admin' });
+			for (const admin of admins) {
+				await Notification.create({ userId: admin._id, bookingId: null, title: 'Reel Comment', message: msg, type: 'alert' });
+			}
+
+			if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+				webpush.setVapidDetails('mailto:admin@yourdomain.com', process.env.VAPID_PUBLIC_KEY, process.env.VAPID_PRIVATE_KEY);
+				const subs = await PushSubscription.find();
+				const payload = JSON.stringify({ title: '💬 New Reel Comment', message: msg, type: 'comment', reelId });
+				for (const s of subs) {
+					try { await webpush.sendNotification(s.subscription, payload); } catch (e) { console.warn('❌ Failed push comment', e && e.message); }
+				}
+			}
+		} catch (e) {
+			console.error('❌ Error notifying admins about comment:', e && e.message);
+		}
+
 		res.json(comment);
 	} catch (e) {
 		console.error('❌ Error adding comment:', e.message);

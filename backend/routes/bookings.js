@@ -3,6 +3,10 @@ const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
 const Service = require('../models/Service');
 const Booking = require('../models/Booking');
+const PushSubscription = require('../models/PushSubscription');
+const webpush = require('web-push');
+const Notification = require('../models/Notification');
+const User = require('../models/User');
 
 // Allowed booking start hours: 13..18 (end must be <= 19)
 const HOURS_START = Array.from({ length: 6 }, (_, i) => 13 + i); // 13,14,15,16,17,18
@@ -155,6 +159,33 @@ router.post('/', authenticateToken, async (req, res) => {
     });
     
     console.log('✅ Booking created successfully:', { bookingId: b._id, slot: `${startHour}-${endHour}` });
+    // Create admin notifications and try to push to subscribed admins
+    try {
+      // Create a readable message
+      const msg = `New booking for service ${serviceId} on ${date} at ${startHour}:00`;
+      // Save Notification for each admin user
+      const admins = await User.find({ role: 'admin' });
+      for (const admin of admins) {
+        await Notification.create({ userId: admin._id, bookingId: b._id, title: 'New Booking', message: msg, type: 'booking' });
+      }
+
+      // Send web-push if configured
+      if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+        webpush.setVapidDetails('mailto:admin@yourdomain.com', process.env.VAPID_PUBLIC_KEY, process.env.VAPID_PRIVATE_KEY);
+        const subs = await PushSubscription.find();
+        const payload = JSON.stringify({ title: '🔔 New Booking', message: msg, type: 'booking', bookingId: b._id });
+        for (const s of subs) {
+          try {
+            await webpush.sendNotification(s.subscription, payload);
+          } catch (err) {
+            console.warn('❌ Failed to send push to', s._id, err && err.message);
+          }
+        }
+      }
+    } catch (pushErr) {
+      console.error('❌ Booking push/notification error:', pushErr && pushErr.message);
+    }
+
     res.json(b);
   } catch (err) {
     console.error('❌ Error creating booking:', err.message);

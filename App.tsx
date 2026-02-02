@@ -238,6 +238,8 @@ const App: React.FC = () => {
             }
           })
           .catch(err => console.error('❌ Error initializing push notifications:', err));
+        // Start listening for messages from service worker
+        try { PushNotificationService.listenForWorkerMessages(); } catch (e) {}
       } else if (Notification.permission === 'granted') {
         // Already permitted, just initialize
         PushNotificationService.initialize().catch(err => {
@@ -847,6 +849,8 @@ const App: React.FC = () => {
               thumbnail: '',
               likes: (r as any).likes || 0,
               views: (r as any).views || 0,
+              // expose linked service id (if any) to the ReelScreen
+              serviceId: (r as any).serviceId || null,
               baseRate: 0
             }));
           }

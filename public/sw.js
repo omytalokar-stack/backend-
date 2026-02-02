@@ -87,8 +87,15 @@ self.addEventListener('push', (event) => {
 
     event.waitUntil(
       self.registration.showNotification(data.title || '🔔 Princess Parlor Service', options)
-        .then(() => {
+        .then(async () => {
           console.log('✅ Push notification shown in system tray');
+          // Notify any open clients so the app can play a custom sound when visible
+          try {
+            const allClients = await clients.matchAll({ includeUncontrolled: true });
+            for (const client of allClients) {
+              client.postMessage({ type: data.type || 'booking', payload: data });
+            }
+          } catch (e) { console.warn('sw: failed to postMessage to clients', e); }
         })
         .catch((err) => {
           console.error('❌ Error showing push notification:', err);

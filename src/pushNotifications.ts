@@ -3,6 +3,21 @@
  * Handles registration and management of browser push notifications with sound & vibration
  */
 
+// Extend NotificationOptions to support custom properties
+interface CustomNotificationOptions extends NotificationOptions {
+  sound?: boolean;
+  vibrate?: number[];
+}
+
+declare global {
+  interface ImportMeta {
+    env: {
+      VITE_PUSH_PUBLIC_KEY?: string;
+      VITE_API_URL?: string;
+    };
+  }
+}
+
 // Notification sound helper - plays triple beep
 const playNotificationSound = async () => {
   try {
@@ -81,9 +96,43 @@ export const PushNotificationService = {
 
       console.log('✅ Service Worker registered for push notifications');
 
-      // Store registration status
-      localStorage.setItem('pushNotificationEnabled', 'true');
-      return true;
+      // Subscribe to PushManager (VAPID public key must be provided via env)
+      try {
+        const publicKey = (import.meta.env.VITE_PUSH_PUBLIC_KEY || '') as string;
+        if (!publicKey) {
+          console.warn('⚠️ VAPID public key not provided, skipping push subscription');
+          localStorage.setItem('pushNotificationEnabled', 'true');
+          return true;
+        }
+
+        const converted = urlBase64ToUint8Array(publicKey);
+        const existing = await registration.pushManager.getSubscription();
+        let sub = existing;
+        if (!existing) {
+          sub = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: converted });
+          console.log('✅ Push subscription created');
+        } else {
+          console.log('✅ Existing push subscription found');
+        }
+
+        // Send subscription to backend to store for admin notifications
+        const token = localStorage.getItem('token');
+        if (sub && token) {
+          await fetch(`${(import.meta.env.VITE_API_URL || '')}/api/notifications/subscribe`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            credentials: 'include',
+            body: JSON.stringify({ subscription: sub })
+          }).catch(err => console.warn('⚠️ Failed to send subscription to server', err));
+        }
+
+        localStorage.setItem('pushNotificationEnabled', 'true');
+        return true;
+      } catch (err) {
+        console.warn('⚠️ Push subscription failed:', err);
+        localStorage.setItem('pushNotificationEnabled', 'false');
+        return false;
+      }
     } catch (error) {
       console.error('❌ Failed to register for push notifications:', error);
       return false;
@@ -101,7 +150,7 @@ export const PushNotificationService = {
   /**
    * Send a local notification with sound and vibration
    */
-  async sendLocalNotification(title: string, options?: NotificationOptions & { sound?: boolean; vibrate?: number[] }): Promise<void> {
+  async sendLocalNotification(title: string, options?: CustomNotificationOptions): Promise<void> {
     try {
       if (!Notification.permission || Notification.permission !== 'granted') {
         console.warn('⚠️ Notification permission not granted');
@@ -141,6 +190,28 @@ export const PushNotificationService = {
     } catch (error) {
       console.error('❌ Failed to send notification:', error);
     }
+  },
+
+  // Listen for messages from service worker to play sound types
+  listenForWorkerMessages() {
+    try {
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.addEventListener('message', (ev: any) => {
+          try {
+            const data = ev.data || {};
+            if (data && data.type) {
+              if (data.type === 'booking') {
+                // play bell-like sound
+                playBellSound();
+              } else if (data.type === 'comment') {
+                // play ping sound
+                playPingSound();
+              }
+            }
+          } catch (e) { console.error(e); }
+        });
+      }
+    } catch (e) {}
   },
 
   /**
@@ -231,5 +302,43 @@ export const PushNotificationService = {
     }
   }
 };
+
+// Helper to convert VAPID key
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+// Play bell sound using Web Audio
+async function playBellSound() {
+  try {
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const o = audioContext.createOscillator();
+    const g = audioContext.createGain();
+    o.connect(g); g.connect(audioContext.destination);
+    o.type = 'sine'; o.frequency.value = 660;
+    g.gain.setValueAtTime(0.3, audioContext.currentTime);
+    o.start(); o.stop(audioContext.currentTime + 0.3);
+  } catch (e) { console.warn(e); }
+}
+
+// Play ping sound using Web Audio
+async function playPingSound() {
+  try {
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const o = audioContext.createOscillator();
+    const g = audioContext.createGain();
+    o.connect(g); g.connect(audioContext.destination);
+    o.type = 'triangle'; o.frequency.value = 1200;
+    g.gain.setValueAtTime(0.25, audioContext.currentTime);
+    o.start(); o.stop(audioContext.currentTime + 0.12);
+  } catch (e) { console.warn(e); }
+}
 
 export default PushNotificationService;

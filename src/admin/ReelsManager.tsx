@@ -3,6 +3,7 @@ import { API_BASE, uploadFile, uploadFileWithProgress, apiCall } from '../api';
 
 type ReelItem = {
   id: string;
+  serviceId?: string | null;
   videoUrl: string;
   description: string;
   pinnedComment?: string;
@@ -28,6 +29,7 @@ const ReelsManager: React.FC<{ showFormDefault?: boolean }> = ({ showFormDefault
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [analyticsText, setAnalyticsText] = useState<Record<string, string>>({});
   const [showForm, setShowForm] = useState<boolean>(!!showFormDefault);
+  const [uploadOnlyMode, setUploadOnlyMode] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'reels' | 'comments'>('reels');
   const [loadingComments, setLoadingComments] = useState(false);
   useEffect(() => { setShowForm(!!showFormDefault); }, [showFormDefault]);
@@ -49,7 +51,7 @@ const ReelsManager: React.FC<{ showFormDefault?: boolean }> = ({ showFormDefault
       const d = await r.json();
       if (Array.isArray(d)) {
         console.log('✅ Reels loaded:', d.length);
-        setReels(d.map((x: any) => ({ id: x._id || x.id, videoUrl: x.videoUrl || '', description: x.description || '', pinnedComment: x.pinnedComment || '', replies: Array.isArray(x.replies) ? x.replies : [], likes: x.likes || 0, views: x.views || 0 })));
+        setReels(d.map((x: any) => ({ id: x._id || x.id, serviceId: x.serviceId || null, videoUrl: x.videoUrl || '', description: x.description || '', pinnedComment: x.pinnedComment || '', replies: Array.isArray(x.replies) ? x.replies : [], likes: x.likes || 0, views: x.views || 0 })));
         localStorage.setItem('adminReels', JSON.stringify(d));
         return;
       }
@@ -137,10 +139,13 @@ const ReelsManager: React.FC<{ showFormDefault?: boolean }> = ({ showFormDefault
     if (!videoUrl) return;
     const token = localStorage.getItem('token');
     try {
+      const payload: any = { videoUrl, description: form.description };
+      if (uploadOnlyMode) payload.serviceId = null;
+
       const r = await fetch(`${API_BASE}/api/admin/reels`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token!}` },
-        body: JSON.stringify({ videoUrl, description: form.description }),
+        body: JSON.stringify(payload),
         credentials: 'include'
       });
       if (r.ok) {
@@ -269,9 +274,14 @@ const ReelsManager: React.FC<{ showFormDefault?: boolean }> = ({ showFormDefault
           </button>
         </div>
         {activeTab === 'reels' && (
-          <button onClick={() => setShowForm(v => !v)} className="px-3 py-2 bg-[#FFB7C5] text-white rounded-[15px] font-black active:scale-95 text-sm whitespace-nowrap">
-            {showForm ? 'Close' : 'Add Reel'}
-          </button>
+          <div className="flex gap-2">
+            <button onClick={() => { setUploadOnlyMode(false); setShowForm(v => !v); }} className="px-3 py-2 bg-[#FFB7C5] text-white rounded-[15px] font-black active:scale-95 text-sm whitespace-nowrap">
+              {showForm && !uploadOnlyMode ? 'Close' : 'Add Reel'}
+            </button>
+            <button onClick={() => { setUploadOnlyMode(true); setShowForm(true); }} className="px-3 py-2 bg-[#FDE68A] text-slate-800 rounded-[15px] font-black active:scale-95 text-sm whitespace-nowrap">
+              Upload Only Reel
+            </button>
+          </div>
         )}
       </div>
       
@@ -291,7 +301,10 @@ const ReelsManager: React.FC<{ showFormDefault?: boolean }> = ({ showFormDefault
                 <div className="text-xs text-slate-600 text-right mt-1">Uploading: {uploadProgress}%</div>
               </div>
             )}
-            <button onClick={addReel} className="w-full py-3 bg-[#FFB7C5] text-white font-black rounded-[12px] active:scale-95 text-sm">Submit</button>
+            <div className="flex gap-2">
+              <button onClick={addReel} className="flex-1 py-3 bg-[#FFB7C5] text-white font-black rounded-[12px] active:scale-95 text-sm">Submit</button>
+              {uploadOnlyMode && <div className="px-3 py-3 text-sm rounded-[12px] bg-yellow-100 text-yellow-800 font-black">Mode: Upload Only</div>}
+            </div>
           </div>
         </div>
       )}
@@ -303,6 +316,7 @@ const ReelsManager: React.FC<{ showFormDefault?: boolean }> = ({ showFormDefault
             <video src={r.videoUrl} className="w-full h-32 rounded-[12px] object-cover bg-slate-900" controls />
             <div className="space-y-1">
               <div className="font-bold text-slate-800 text-sm line-clamp-2">{r.description || 'No description'}</div>
+              {r.serviceId ? <div className="text-xs text-slate-500">Linked Service: {r.serviceId}</div> : <div className="text-xs text-amber-600 font-bold">Independent Reel</div>}
               {r.pinnedComment && <div className="text-xs text-slate-600 italic line-clamp-1">📌 {r.pinnedComment}</div>}
             </div>
             <div className="flex items-center gap-3 pt-2">

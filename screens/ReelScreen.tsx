@@ -262,21 +262,23 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
 
   return (
     <div className="h-full w-full snap-start relative bg-black flex items-center justify-center" ref={containerRef} style={{ scrollSnapAlign: 'start' }}>
-      <video 
-        ref={videoRef}
-        src={service.videoUrl} 
-        className="h-full w-full object-cover opacity-80"
-        loop
-        muted={isMuted}
-        playsInline
-      />
-      {/* Mute/Unmute toggle */}
-      {isMuted && (
-        <button onClick={handleUnmute} className="absolute top-6 right-6 z-20 px-4 py-2 bg-white/80 text-slate-800 font-bold rounded-[20px] active:scale-95 transition-all text-sm">
-          🔊 Unmute
-        </button>
-      )}
-      
+        {(service as any).serviceId ? (
+          <button 
+            onClick={() => onBook(service)}
+            className="px-8 py-3 bg-[#FFB7C5] text-white font-black rounded-[30px] shadow-xl active:scale-95 transition-all flex items-center gap-2"
+          >
+            <Play size={18} fill="currentColor" />
+            {t.bookNow} - {(getDisplayRate ? getDisplayRate(service) : (() => {
+              const userRaw = localStorage.getItem('user');
+              const user = userRaw ? JSON.parse(userRaw) : {};
+              const base = typeof service.baseRate === 'number' ? service.baseRate : parseInt(service.rate.replace(/[^\d]/g, ''), 10);
+              const isFirstTime = (typeof user.orderCount === 'number' ? user.orderCount === 0 : true);
+              const discounted = service.offerOn || (user.isOfferActive && !user.isOfferUsed && isFirstTime);
+              const price = discounted ? Math.round(base * 0.8) : base;
+              return `₹${price}`;
+            })())}
+          </button>
+        ) : null}
       {/* Overlays */}
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/60 pointer-events-none" />
 

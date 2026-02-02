@@ -340,31 +340,24 @@ const OrderManager: React.FC = () => {
               <div className="text-center py-8 text-slate-500 text-sm">No orders yet</div>
             ) : (
               orders.map(o => (
-                <button
-                  key={o._id}
-                  onClick={() => setSelectedBooking(o)}
-                  className="p-4 rounded-2xl border border-slate-200 space-y-2 bg-white shadow-sm hover:shadow-md transition-shadow w-full text-left"
-                >
-                  <div className="flex items-start justify-between gap-2">
+                <div key={o._id} className="p-4 rounded-2xl border border-slate-200 bg-white shadow-sm hover:shadow-md transition-shadow w-full">
+                  <div className="flex justify-between items-start gap-3">
                     <div className="flex-1 min-w-0">
-                      <div className="font-bold text-slate-800 text-sm truncate">{userLabel(o.userId)}</div>
-                      <div className="text-xs text-slate-500 line-clamp-2">{nameByService(o.serviceId)}</div>
+                      <div className="text-lg font-black text-slate-800 truncate">{nameByService(o.serviceId)}</div>
+                      <div className="text-sm font-black text-slate-700 mt-1">{userLabel(o.userId)}</div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className={`px-2.5 py-1.5 rounded-[10px] text-xs font-black whitespace-nowrap ${o.status === 'Completed' ? 'bg-green-100 text-green-700' : o.status === 'Done' ? 'bg-teal-100 text-teal-700' : o.status === 'Scheduled' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'}`}>{o.status}</span>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleDelete(o._id); }}
-                        title="Delete order"
-                        className="p-2 rounded-full text-red-500 hover:bg-red-50"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                    <div className="flex flex-col items-end gap-2">
+                      <span className={`px-3 py-1 rounded-full text-xs font-black text-white shadow-md ${o.status === 'Confirmed' ? 'bg-green-500' : o.status === 'Pending' ? 'bg-yellow-500' : 'bg-slate-400'}`}>{o.status}</span>
                     </div>
                   </div>
-                  <div className="text-xs text-slate-600 bg-slate-50 p-2.5 rounded-[10px]">
-                    📅 {o.date} • 🕐 {labelTime(o)}
+
+                  <div className="mt-3 text-sm font-bold text-indigo-600 bg-indigo-50 inline-block px-3 py-2 rounded-md">{o.date} • {labelTime(o)}</div>
+
+                  <div className="mt-4 flex items-center justify-between gap-3">
+                    <button onClick={() => handleCall(userLabel(o.userId))} className="flex-1 py-2 bg-green-500 text-white font-bold rounded-[12px]">📞 Call Now</button>
+                    <button onClick={() => handleDelete(o._id)} className="py-2 px-3 bg-red-100 text-red-700 font-bold rounded-[12px]">Delete</button>
                   </div>
-                </button>
+                </div>
               ))
             )}
           </div>
