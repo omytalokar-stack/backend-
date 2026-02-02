@@ -408,23 +408,23 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
         </button>
       </div>
 
-      {/* Left-side Title + Description + Prominent Book Now (5-10% from bottom, clean no blur) */}
+      {/* Left-side Title + Description + Prominent Book Now (5-10% from bottom, crisp clean) */}
       <div className="absolute left-4 right-20 bottom-8 z-30 max-w-[70%] text-white pointer-events-auto">
-        <div className="bg-gradient-to-t from-black/80 via-black/50 to-transparent p-5 rounded-2xl">
-          <h3 className="font-black text-xl leading-tight drop-shadow-lg">{localizeField((service as any).serviceName || (service as any).title || (service as any).name || (service as any).service) || 'Service'}</h3>
+        <div className="bg-gradient-to-t from-black via-black/70 to-transparent p-5 rounded-xl">
+          <h3 className="font-black text-lg leading-snug drop-shadow-lg">{localizeField((service as any).serviceName || (service as any).title || (service as any).name || (service as any).service) || 'Service'}</h3>
           {localizeField((service as any).description || (service as any).features) ? (
-            <p className="mt-2 text-sm text-white/95 leading-snug drop-shadow-md">{localizeField((service as any).description || (service as any).features)}</p>
+            <p className="mt-1.5 text-xs text-white/90 leading-tight drop-shadow-md">{localizeField((service as any).description || (service as any).features)}</p>
           ) : null}
 
           {(service as any).serviceId ? (
-            <div className="mt-4">
+            <div className="mt-3">
               <button
                 onClick={(e) => { e.stopPropagation(); onBook(service); }}
-                className="inline-flex items-center gap-3 px-7 py-3 rounded-full font-extrabold text-white text-lg shadow-lg hover:shadow-[0_0_20px_rgba(255,60,172,0.5)] active:scale-95 transition-all duration-200"
+                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full font-extrabold text-white text-base shadow-md hover:shadow-[0_0_15px_rgba(255,60,172,0.4)] active:scale-95 transition-all duration-200"
                 style={{ background: 'linear-gradient(135deg,#FF3CAC 0%, #FFD166 100%)' }}
                 title={t.bookNow}
               >
-                <Play size={20} className="inline-block" />
+                <Play size={18} className="inline-block" />
                 {t.bookNow}
               </button>
             </div>
