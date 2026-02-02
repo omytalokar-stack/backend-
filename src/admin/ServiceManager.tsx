@@ -18,7 +18,7 @@ const ServiceManager: React.FC<{ showFormDefault?: boolean }> = ({ showFormDefau
   const [form, setForm] = useState<Omit<ServiceItem, '_id' | 'imageUrl' | 'videoUrl'> & { category: string }>({
     name: '',
     description: '',
-    category: 'Bleach',
+    category: 'Waxing',
     durationMinutes: 60,
     baseRate: 0,
     offerOn: false
@@ -105,7 +105,7 @@ const ServiceManager: React.FC<{ showFormDefault?: boolean }> = ({ showFormDefau
       credentials: 'include'
     });
     if (r.ok) {
-      setForm({ name: '', description: '', category: 'Bleach', durationMinutes: 60, baseRate: 0, offerOn: false });
+      setForm({ name: '', description: '', category: 'Waxing', durationMinutes: 60, baseRate: 0, offerOn: false });
       setImageFile(null);
       setVideoFile(null);
       load();
@@ -190,6 +190,10 @@ const ServiceManager: React.FC<{ showFormDefault?: boolean }> = ({ showFormDefau
             <div>
               <label className="text-xs font-bold text-slate-500 block mb-1">Category</label>
               <select className="px-3 py-2.5 border border-slate-200 rounded-[12px] w-full text-sm" value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}>
+                <option>Waxing</option>
+                <option>Hair Cut</option>
+                <option>Hair Style</option>
+                <option>Polishing</option>
                 <option>Bleach</option>
                 <option>Makeup</option>
                 <option>Facial</option>
