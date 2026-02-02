@@ -286,12 +286,9 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
               console.error('❌ Video load error:', e);
             }}
           />
-          ) : (
-            <div className="text-white font-bold text-center">No video available</div>
+        ) : (
+          <div className="text-white font-bold text-center">No video available</div>
         )}
-
-        {/* Overlays */}
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/60 pointer-events-none" />
 
       {/* Interactions */}
       <div className="absolute right-4 bottom-32 flex flex-col gap-4 items-center z-10">
@@ -316,36 +313,17 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
         />
       </div>
 
-      {/* Info & CTA - Bottom Bar */}
-      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-black/50 pt-6 pb-5 px-4 z-20">
-        <div className="space-y-3">
-          <div className="space-y-1">
-            <h3 className="text-white font-black text-lg drop-shadow-lg line-clamp-1">{typeof service.name === 'object' ? service.name[lang] : service.name}</h3>
-            <p className="text-white/80 text-xs line-clamp-1 drop-shadow-md">{typeof service.features === 'object' ? service.features[lang] : service.features}</p>
-            <div className="text-white/70 text-xs font-bold flex gap-3 mt-1">
-              <span>👁️ {(service as any).views || 0}</span>
-              <span>❤️ {(service as any).likes || 0}</span>
-            </div>
-          </div>
-          {(service as any).serviceId ? (
-            <button 
-              onClick={() => onBook(service)}
-              className="w-full px-6 py-2.5 bg-[#FFB7C5] hover:bg-[#FF9CAC] text-white font-black text-sm rounded-[25px] shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2"
-            >
-              <Play size={16} fill="currentColor" />
-              {t.bookNow} - ₹{(getDisplayRate ? getDisplayRate(service).replace('₹', '') : (() => {
-                const userRaw = localStorage.getItem('user');
-                const user = userRaw ? JSON.parse(userRaw) : {};
-                const base = typeof service.baseRate === 'number' ? service.baseRate : parseInt(service.rate.replace(/[^\d]/g, ''), 10);
-                const isFirstTime = (typeof user.orderCount === 'number' ? user.orderCount === 0 : true);
-                const discounted = service.offerOn || (user.isOfferActive && !user.isOfferUsed && isFirstTime);
-                const price = discounted ? Math.round(base * 0.8) : base;
-                return `${price}`;
-              })())}
-            </button>
-          ) : null}
-        </div>
-      </div>
+      {/* Small Book button (bottom-left) - transparent background */}
+      {(service as any).serviceId ? (
+        <button
+          onClick={(e) => { e.stopPropagation(); onBook(service); }}
+          className="absolute left-4 bottom-6 z-30 px-3 py-1.5 bg-white/10 backdrop-blur-sm text-white font-black text-sm rounded-full shadow-sm hover:bg-white/20 active:scale-95"
+          title={t.bookNow}
+        >
+          <Play size={14} className="inline-block mr-2" />
+          {t.bookNow}
+        </button>
+      ) : null}
       </div>
 
       {/* Comments Modal */}
