@@ -203,4 +203,5 @@ app.get('/api/health', (req, res) => {
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`✅ Reels API endpoints ready: GET /api/reels/:id, POST /api/reels/:id/like`);
 });
