@@ -258,17 +258,17 @@ const OrderManager: React.FC = () => {
 
   return (
     <ErrorBoundary>
-      <div className="space-y-4 pb-24">
+      <div className="space-y-3 pb-24 w-full max-w-full overflow-hidden px-2">
         <div className="flex justify-between items-center gap-2">
-          <h3 className="text-lg font-black text-slate-800 truncate">Orders ({orders.length})</h3>
-          <div className="flex gap-2">
+          <h3 className="text-base font-black text-slate-800 truncate flex-1">Orders ({orders.length})</h3>
+          <div className="flex gap-1 flex-shrink-0">
             <button 
               onClick={() => setView(view === 'list' ? 'chart' : 'list')} 
-              className="px-3 py-2 bg-teal-100 text-teal-700 rounded-[15px] font-black active:scale-95 text-xs whitespace-nowrap"
+              className="px-2 py-1.5 bg-teal-100 text-teal-700 rounded-[12px] font-black active:scale-95 text-xs whitespace-nowrap"
             >
-              {view === 'list' ? '📊 Chart' : '📋 List'}
+              {view === 'list' ? '📊' : '📋'}
             </button>
-            <button onClick={cleanup} className="px-3 py-2 bg-[#FFB7C5] text-white rounded-[15px] font-black active:scale-95 text-xs whitespace-nowrap">Cleanup</button>
+            <button onClick={cleanup} className="px-2 py-1.5 bg-[#FFB7C5] text-white rounded-[12px] font-black active:scale-95 text-xs whitespace-nowrap">⚙️</button>
           </div>
         </div>
 
@@ -335,27 +335,32 @@ const OrderManager: React.FC = () => {
             )}
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-2 w-full">
             {orders.length === 0 ? (
               <div className="text-center py-8 text-slate-500 text-sm">No orders yet</div>
             ) : (
               orders.map(o => (
-                <div key={o._id} className="p-4 rounded-2xl border border-slate-200 bg-white shadow-sm hover:shadow-md transition-shadow w-full">
-                  <div className="flex justify-between items-start gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="text-lg font-black text-slate-800 truncate">{nameByService(o.serviceId)}</div>
-                      <div className="text-sm font-black text-slate-700 mt-1">{userLabel(o.userId)}</div>
+                <div key={o._id} className="p-3 rounded-xl border border-slate-200 bg-white shadow-sm hover:shadow-md transition-shadow w-full overflow-hidden">
+                  <div className="flex flex-col gap-2">
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="text-base font-black text-slate-800 truncate">{nameByService(o.serviceId)}</div>
+                        <div className="text-xs font-bold text-slate-600 mt-0.5 truncate">{userLabel(o.userId)}</div>
+                      </div>
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-black text-white shadow-md flex-shrink-0 whitespace-nowrap ${o.status === 'Confirmed' ? 'bg-green-500' : o.status === 'Pending' ? 'bg-yellow-500' : 'bg-slate-400'}`}>{o.status}</span>
                     </div>
-                    <div className="flex flex-col items-end gap-2">
-                      <span className={`px-3 py-1 rounded-full text-xs font-black text-white shadow-md ${o.status === 'Confirmed' ? 'bg-green-500' : o.status === 'Pending' ? 'bg-yellow-500' : 'bg-slate-400'}`}>{o.status}</span>
+                    
+                    <div className="flex items-center gap-2 text-xs font-bold text-slate-600">
+                      <span className="bg-indigo-100 text-indigo-700 px-2.5 py-1 rounded-full flex-shrink-0 whitespace-nowrap">{labelTime(o)}</span>
+                      <span className="text-slate-500 truncate">{new Date(o.date).toLocaleDateString()}</span>
                     </div>
-                  </div>
-
-                  <div className="mt-3 text-sm font-bold text-indigo-600 bg-indigo-50 inline-block px-3 py-2 rounded-md">{o.date} • {labelTime(o)}</div>
-
-                  <div className="mt-4 flex items-center justify-between gap-3">
-                    <button onClick={() => handleCall(userLabel(o.userId))} className="flex-1 py-2 bg-green-500 text-white font-bold rounded-[12px]">📞 Call Now</button>
-                    <button onClick={() => handleDelete(o._id)} className="py-2 px-3 bg-red-100 text-red-700 font-bold rounded-[12px]">Delete</button>
+                    
+                    <div className="flex items-center justify-between gap-2 pt-2">
+                      <button onClick={() => handleCall(userLabel(o.userId))} className="flex-1 py-2 bg-green-500 hover:bg-green-600 text-white font-bold text-sm rounded-[10px] active:scale-95">📞 Call</button>
+                      <button onClick={() => handleDelete(o._id)} className="py-2 px-3 bg-red-100 hover:bg-red-200 text-red-700 font-bold text-sm rounded-[10px] active:scale-95">
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))

@@ -261,29 +261,14 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
   };
 
   return (
-    <div className="h-full w-full snap-start relative bg-black flex items-center justify-center" ref={containerRef} style={{ scrollSnapAlign: 'start' }}>
-        {(service as any).serviceId ? (
-          <button 
-            onClick={() => onBook(service)}
-            className="px-8 py-3 bg-[#FFB7C5] text-white font-black rounded-[30px] shadow-xl active:scale-95 transition-all flex items-center gap-2"
-          >
-            <Play size={18} fill="currentColor" />
-            {t.bookNow} - {(getDisplayRate ? getDisplayRate(service) : (() => {
-              const userRaw = localStorage.getItem('user');
-              const user = userRaw ? JSON.parse(userRaw) : {};
-              const base = typeof service.baseRate === 'number' ? service.baseRate : parseInt(service.rate.replace(/[^\d]/g, ''), 10);
-              const isFirstTime = (typeof user.orderCount === 'number' ? user.orderCount === 0 : true);
-              const discounted = service.offerOn || (user.isOfferActive && !user.isOfferUsed && isFirstTime);
-              const price = discounted ? Math.round(base * 0.8) : base;
-              return `₹${price}`;
-            })())}
-          </button>
-        ) : null}
+    <div className="h-full w-full snap-start relative bg-black overflow-hidden" ref={containerRef} style={{ scrollSnapAlign: 'start' }}>
+      {/* Video Container */}
+      <div className="h-full w-full flex items-center justify-center bg-black">
       {/* Overlays */}
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/60 pointer-events-none" />
 
       {/* Interactions */}
-      <div className="absolute right-2 bottom-20 flex flex-col gap-3 items-center z-10">
+      <div className="absolute right-4 bottom-32 flex flex-col gap-4 items-center z-10">
         <InteractionButton 
           icon={<Heart size={24} fill={liked ? '#FFB7C5' : 'none'} className={liked ? 'text-[#FFB7C5]' : 'text-white'} />} 
           label={t.like}
@@ -305,31 +290,36 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
         />
       </div>
 
-      {/* Info & CTA */}
-      <div className="absolute bottom-10 left-6 right-20 space-y-4">
-        <div className="space-y-1">
-          <h3 className="text-white font-black text-2xl drop-shadow-lg">{typeof service.name === 'object' ? service.name[lang] : service.name}</h3>
-          <p className="text-white/80 text-sm line-clamp-2 drop-shadow-md">{typeof service.features === 'object' ? service.features[lang] : service.features}</p>
-          <div className="text-white/70 text-xs font-bold flex gap-3 mt-2">
-            <span>👁️ {(service as any).views || 0} views</span>
-            <span>❤️ {(service as any).likes || 0} likes</span>
+      {/* Info & CTA - Bottom Bar */}
+      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-black/50 pt-6 pb-5 px-4 z-20">
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <h3 className="text-white font-black text-lg drop-shadow-lg line-clamp-1">{typeof service.name === 'object' ? service.name[lang] : service.name}</h3>
+            <p className="text-white/80 text-xs line-clamp-1 drop-shadow-md">{typeof service.features === 'object' ? service.features[lang] : service.features}</p>
+            <div className="text-white/70 text-xs font-bold flex gap-3 mt-1">
+              <span>👁️ {(service as any).views || 0}</span>
+              <span>❤️ {(service as any).likes || 0}</span>
+            </div>
           </div>
+          {(service as any).serviceId ? (
+            <button 
+              onClick={() => onBook(service)}
+              className="w-full px-6 py-2.5 bg-[#FFB7C5] hover:bg-[#FF9CAC] text-white font-black text-sm rounded-[25px] shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2"
+            >
+              <Play size={16} fill="currentColor" />
+              {t.bookNow} - ₹{(getDisplayRate ? getDisplayRate(service).replace('₹', '') : (() => {
+                const userRaw = localStorage.getItem('user');
+                const user = userRaw ? JSON.parse(userRaw) : {};
+                const base = typeof service.baseRate === 'number' ? service.baseRate : parseInt(service.rate.replace(/[^\d]/g, ''), 10);
+                const isFirstTime = (typeof user.orderCount === 'number' ? user.orderCount === 0 : true);
+                const discounted = service.offerOn || (user.isOfferActive && !user.isOfferUsed && isFirstTime);
+                const price = discounted ? Math.round(base * 0.8) : base;
+                return `${price}`;
+              })())}
+            </button>
+          ) : null}
         </div>
-        <button 
-          onClick={() => onBook(service)}
-          className="px-8 py-3 bg-[#FFB7C5] text-white font-black rounded-[30px] shadow-xl active:scale-95 transition-all flex items-center gap-2"
-        >
-          <Play size={18} fill="currentColor" />
-          {t.bookNow} - {(getDisplayRate ? getDisplayRate(service) : (() => {
-            const userRaw = localStorage.getItem('user');
-            const user = userRaw ? JSON.parse(userRaw) : {};
-            const base = typeof service.baseRate === 'number' ? service.baseRate : parseInt(service.rate.replace(/[^\d]/g, ''), 10);
-            const isFirstTime = (typeof user.orderCount === 'number' ? user.orderCount === 0 : true);
-            const discounted = service.offerOn || (user.isOfferActive && !user.isOfferUsed && isFirstTime);
-            const price = discounted ? Math.round(base * 0.8) : base;
-            return `₹${price}`;
-          })())}
-        </button>
+      </div>
       </div>
 
       {/* Comments Modal */}
