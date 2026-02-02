@@ -41,16 +41,19 @@ export const apiCall = async (
   };
 
   console.log(`[API] ${options.method || 'GET'} ${url}`);
-  const response = await fetch(url, finalOptions);
-
-  if (!response.ok) {
-    console.error(`❌ API Error: ${response.status} ${response.statusText}`);
-    if (response.status === 401) {
-      console.warn('⚠️ Unauthorized - token may be expired');
+  try {
+    const response = await fetch(url, finalOptions);
+    if (!response.ok) {
+      console.error(`❌ API Error: ${response.status} ${response.statusText}`);
+      if (response.status === 401) {
+        console.warn('⚠️ Unauthorized - token may be expired');
+      }
     }
+    return response;
+  } catch (err) {
+    console.error('❌ Network/API fetch failed:', err);
+    throw err;
   }
-
-  return response;
 };
 
 /**
@@ -62,29 +65,33 @@ export const uploadFile = async (file: File): Promise<string> => {
   fd.append('file', file);
 
   console.log(`📤 Uploading file: ${file.name} (${file.size} bytes) to ${API_BASE}/api/admin/upload`);
-
-  const response = await fetch(`${API_BASE}/api/admin/upload`, {
-    method: 'POST',
-    headers: {
-      ...(token && { Authorization: `Bearer ${token}` })
-    },
-    body: fd,
-    credentials: 'include'
-  });
-
-  const text = await response.text();
-  if (!response.ok) {
-    console.error(`❌ Upload failed: ${response.status} - ${text}`);
-    throw new Error(`Upload failed: ${response.status} - ${text}`);
-  }
-
   try {
-    const data = JSON.parse(text);
-    console.log(`✅ Upload successful: ${data.url}`);
-    return data.url as string;
-  } catch (parseErr) {
-    console.error('Failed to parse upload response:', parseErr);
-    throw new Error('Invalid response format from server');
+    const response = await fetch(`${API_BASE}/api/admin/upload`, {
+      method: 'POST',
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` })
+      },
+      body: fd,
+      credentials: 'include'
+    });
+
+    const text = await response.text();
+    if (!response.ok) {
+      console.error(`❌ Upload failed: ${response.status} - ${text}`);
+      throw new Error(`Upload failed: ${response.status} - ${text}`);
+    }
+
+    try {
+      const data = JSON.parse(text);
+      console.log(`✅ Upload successful: ${data.url}`);
+      return data.url as string;
+    } catch (parseErr) {
+      console.error('Failed to parse upload response:', parseErr);
+      throw new Error('Invalid response format from server');
+    }
+  } catch (err) {
+    console.error('❌ Upload network error:', err);
+    throw err;
   }
 };
 

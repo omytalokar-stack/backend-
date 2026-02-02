@@ -17,9 +17,17 @@ const app = express();
 // NOTE: Local `/uploads` is intentionally disabled — uploads must go to Cloudinary.
 // Multer configuration for local disk storage removed to prevent accidental local persistence.
 
-// Middleware - Reasonable limits for file uploads (100MB for stability)
-app.use(express.json({ limit: '100mb' }));
-app.use(express.urlencoded({ limit: '100mb', extended: true }));
+// Middleware - Reasonable limits for file uploads (increase to 200MB for large reels/images)
+app.use(express.json({ limit: '200mb' }));
+app.use(express.urlencoded({ limit: '200mb', extended: true }));
+
+// Global error handlers to capture crashes and unhandled rejections
+process.on('uncaughtException', (err) => {
+  console.error('❌ Uncaught Exception:', err && err.stack ? err.stack : err);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('❌ Unhandled Rejection:', reason);
+});
 
 // CORS configuration - allow frontend connections
 const defaultAllowed = [

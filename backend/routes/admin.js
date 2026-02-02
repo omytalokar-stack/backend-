@@ -32,16 +32,23 @@ if (!fs.existsSync(uploadsDir)) {
 
 let upload;
 if (cloudinary.config().cloud_name) {
-  // Use memory storage and upload via Cloudinary upload_stream to avoid local files
-  upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100 * 1024 * 1024 } });
-  console.log('✅ Using Cloudinary uploader (memory storage) for uploads');
+  // Use disk storage to avoid keeping large buffers in memory (reduces memory pressure)
+  const tempDir = path.join(uploadsDir, 'temp');
+  if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+  const storage = multer.diskStorage({
+    destination: (req, file, cb) => cb(null, tempDir),
+    filename: (req, file, cb) => cb(null, `${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9_.-]/g, '_')}`)
+  });
+  // Allow larger files (200MB) for reels/uploads
+  upload = multer({ storage, limits: { fileSize: 200 * 1024 * 1024 } });
+  console.log('✅ Using Cloudinary uploader (disk storage) for uploads — temp dir:', tempDir);
 } else {
   // If Cloudinary not configured, do NOT fall back to local uploads for safety.
   console.error('❌ Cloudinary not configured. Set CLOUDINARY_URL or CLOUDINARY_* env vars to enable persistent uploads. Local storage is disabled to avoid data loss.');
   // Provide a dummy multer that always errors so uploads fail loudly
   upload = multer({
     storage: multer.memoryStorage(),
-    limits: { fileSize: 100 * 1024 * 1024 },
+    limits: { fileSize: 50 * 1024 * 1024 },
     fileFilter: (req, file, cb) => cb(new Error('Cloudinary not configured'))
   });
 }
@@ -159,40 +166,61 @@ router.get('/services', authenticateToken, ensureAdmin, async (req, res) => {
 router.post('/upload', authenticateToken, ensureAdmin, upload.single('file'), async (req, res) => {
   try {
     console.log('📥 Upload request received');
-    console.log('File info:', req.file ? `${req.file.originalname} (${req.file.size} bytes)` : 'NO FILE');
-    
+    console.log('File info:', req.file ? `${req.file.originalname} (${req.file.size || req.file.size} bytes)` : 'NO FILE');
+
     if (!req.file) {
       console.error('❌ No file in request');
       return res.status(400).json({ error: 'No file provided' });
     }
-    // If Cloudinary is configured we expect a buffer from multer.memoryStorage
-    if (req.file && req.file.buffer && cloudinary.config().cloud_name) {
-      // Upload via stream to Cloudinary
-      const streamifier = require('streamifier');
-      const folder = process.env.CLOUDINARY_FOLDER || 'pastelservice';
-      const uploadStream = cloudinary.uploader.upload_stream(
-        { folder, resource_type: 'auto' },
-        (error, result) => {
-          if (error) {
-            console.error('❌ Cloudinary upload_stream error:', error && error.message);
-            return res.status(500).json({ error: 'Cloudinary upload failed', details: error && error.message });
-          }
-          const url = result.secure_url || result.url;
-          console.log(`✅ Upload successful to Cloudinary: ${url}`);
-          return res.json({ url, public_id: result.public_id, originalName: req.file.originalname, size: req.file.size, mimetype: req.file.mimetype });
+
+    const folder = process.env.CLOUDINARY_FOLDER || 'pastelservice';
+
+    // If disk storage was used, multer gives us a path on disk
+    if (req.file && req.file.path && cloudinary.config().cloud_name) {
+      try {
+        console.log('📤 Uploading file from disk to Cloudinary:', req.file.path);
+        const result = await cloudinary.uploader.upload(req.file.path, { folder, resource_type: 'auto' });
+        // Remove temp file
+        fs.unlink(req.file.path, () => {});
+        const url = result.secure_url || result.url;
+        console.log(`✅ Upload successful to Cloudinary: ${url}`);
+        return res.json({ url, public_id: result.public_id, originalName: req.file.originalname, size: req.file.size || (req.file.size === undefined ? 0 : req.file.size), mimetype: req.file.mimetype || result.format });
+      } catch (err) {
+        console.error('❌ Cloudinary upload error:', err && err.message ? err.message : err);
+        // Attempt to unlink temp file if present
+        if (req.file && req.file.path) {
+          try { fs.unlinkSync(req.file.path); } catch (e) {}
         }
-      );
+        return res.status(500).json({ error: 'Cloudinary upload failed', details: err && err.message ? err.message : String(err) });
+      }
+    }
+
+    // Fallback: if memory buffer (older config) — use upload_stream
+    if (req.file && req.file.buffer && cloudinary.config().cloud_name) {
+      const streamifier = require('streamifier');
+      const uploadStream = cloudinary.uploader.upload_stream({ folder, resource_type: 'auto' }, (error, result) => {
+        if (error) {
+          console.error('❌ Cloudinary upload_stream error:', error && error.message);
+          return res.status(500).json({ error: 'Cloudinary upload failed', details: error && error.message });
+        }
+        const url = result.secure_url || result.url;
+        console.log(`✅ Upload successful to Cloudinary (stream): ${url}`);
+        return res.json({ url, public_id: result.public_id, originalName: req.file.originalname, size: req.file.size, mimetype: req.file.mimetype });
+      });
       streamifier.createReadStream(req.file.buffer).pipe(uploadStream);
       return; // response will be sent from callback
     }
 
-    // Cloudinary not configured or no file buffer
-    console.error('❌ Upload failed: Cloudinary not configured or no file provided');
+    console.error('❌ Upload failed: Cloudinary not configured or file missing');
     return res.status(500).json({ error: 'Upload failed - Cloudinary not configured or no file' });
   } catch (e) {
-    console.error('❌ Upload error:', e.message);
-    console.error('Stack:', e.stack);
-    res.status(500).json({ error: `Failed to upload file: ${e.message}` });
+    console.error('❌ Upload error:', e && e.message ? e.message : e);
+    console.error('Stack:', e && e.stack ? e.stack : e);
+    // Attempt to unlink temp file if present
+    if (req.file && req.file.path) {
+      try { fs.unlinkSync(req.file.path); } catch (err) {}
+    }
+    res.status(500).json({ error: `Failed to upload file: ${e && e.message ? e.message : String(e)}` });
   }
 });
 

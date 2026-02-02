@@ -269,7 +269,7 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
           <video
             ref={videoRef}
             src={service.videoUrl}
-            className="h-full w-full object-cover"
+            className="h-screen w-full object-cover"
             autoPlay={true}
             loop={true}
             muted={true}
@@ -286,8 +286,8 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
               console.error('❌ Video load error:', e);
             }}
           />
-        ) : (
-          <div className="text-white font-bold text-center">No video available</div>
+          ) : (
+            <div className="text-white font-bold text-center">No video available</div>
         )}
 
         {/* Overlays */}
@@ -343,11 +343,7 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
                 return `${price}`;
               })())}
             </button>
-          ) : (
-            <div className="w-full px-6 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-black text-sm rounded-[25px] shadow-xl text-center">
-              ✨ {t.independentReel || 'Independent Reel'} ✨
-            </div>
-          )}
+          ) : null}
         </div>
       </div>
       </div>
