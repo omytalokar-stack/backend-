@@ -4,6 +4,8 @@ import { translations } from '../translations';
 import { Service, Language } from '../types';
 import { Clock, Tag, Star, ShieldCheck, Play, X } from 'lucide-react';
 
+const API_BASE = import.meta.env.VITE_API_URL || '';
+
 interface Props {
   service: Service;
   lang: Language;
@@ -14,7 +16,41 @@ interface Props {
 const ProductDetails: React.FC<Props> = ({ service, lang, onBook, displayRate }) => {
   const t = translations[lang];
   const [showVideoModal, setShowVideoModal] = useState(false);
+  const [fullService, setFullService] = useState<Service | null>(service);
+  const [loading, setLoading] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Fetch full service details from API if we only have partial data
+  useEffect(() => {
+    if (!service) return;
+    
+    const serviceId = (service as any)._id || service.id;
+    
+    // If service already has features, name, and rate, it's complete
+    if (service.name && service.features && service.rate && Object.keys(service).length > 5) {
+      setFullService(service);
+      return;
+    }
+    
+    // Otherwise fetch from API
+    setLoading(true);
+    fetch(`${API_BASE}/api/services/${serviceId}`)
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data) {
+          setFullService(data);
+          console.log(`✅ Loaded full service details for ${serviceId}`);
+        } else {
+          // Fallback to passed service
+          setFullService(service);
+        }
+      })
+      .catch(e => {
+        console.error('❌ Error fetching service:', e);
+        setFullService(service);
+      })
+      .finally(() => setLoading(false));
+  }, [service]);
 
   // Auto-play video when modal opens
   useEffect(() => {
@@ -22,6 +58,32 @@ const ProductDetails: React.FC<Props> = ({ service, lang, onBook, displayRate })
       videoRef.current.play();
     }
   }, [showVideoModal]);
+
+  // Display loading state while fetching
+  if (!fullService && loading) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-2xl font-black text-slate-800 mb-2">Loading...</div>
+          <div className="text-slate-600">Fetching service details...</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Fallback if no service data
+  if (!fullService) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-2xl font-black text-red-600 mb-2">Service Not Found</div>
+          <div className="text-slate-600">Unable to load service details</div>
+        </div>
+      </div>
+    );
+  }
+
+  const displayService = fullService;
 
   // Pause video when modal closes
   const handleCloseModal = () => {
@@ -33,7 +95,7 @@ const ProductDetails: React.FC<Props> = ({ service, lang, onBook, displayRate })
   };
 
   // Check if service has a video
-  const hasVideo = service.videoUrl && service.videoUrl.trim().length > 0;
+  const hasVideo = displayService.videoUrl && displayService.videoUrl.trim().length > 0;
 
   return (
     <div className="pb-24 animate-in slide-in-from-right-8 duration-300">
@@ -45,15 +107,15 @@ const ProductDetails: React.FC<Props> = ({ service, lang, onBook, displayRate })
         }`}
       >
         {/* Display thumbnail or video preview */}
-        {service.thumbnail ? (
+        {displayService.thumbnail ? (
           <img 
-            src={service.thumbnail} 
-            alt={service.name[lang]}
+            src={displayService.thumbnail} 
+            alt={displayService.name[lang]}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
           />
-        ) : service.videoUrl ? (
+        ) : displayService.videoUrl ? (
           <video 
-            src={service.videoUrl} 
+            src={displayService.videoUrl} 
             className="w-full h-full object-cover" 
             muted 
           />
@@ -86,7 +148,7 @@ const ProductDetails: React.FC<Props> = ({ service, lang, onBook, displayRate })
       {/* Video Modal/Popup */}
       {showVideoModal && hasVideo && (
         <div 
-          className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+          className="fixed inset-0 bg-black/95 z-[100] flex items-center justify-center p-4"
           onClick={handleCloseModal}
         >
           {/* Modal Content */}
@@ -97,7 +159,7 @@ const ProductDetails: React.FC<Props> = ({ service, lang, onBook, displayRate })
             {/* Close Button */}
             <button
               onClick={handleCloseModal}
-              className="absolute top-4 right-4 z-50 p-3 bg-white/20 hover:bg-white/40 rounded-full text-white backdrop-blur-sm transition-all active:scale-90"
+              className="absolute top-4 right-4 z-50 p-3 bg-gray-700 hover:bg-gray-600 rounded-full text-white transition-all active:scale-90"
               title="Close video"
             >
               <X size={28} />
@@ -107,7 +169,7 @@ const ProductDetails: React.FC<Props> = ({ service, lang, onBook, displayRate })
             <div className="relative bg-black w-full aspect-video">
               <video
                 ref={videoRef}
-                src={service.videoUrl}
+                src={displayService.videoUrl}
                 className="w-full h-full object-cover"
                 autoPlay
                 muted={false}
@@ -118,8 +180,8 @@ const ProductDetails: React.FC<Props> = ({ service, lang, onBook, displayRate })
 
             {/* Video Info */}
             <div className="p-6 bg-slate-900 text-white space-y-2">
-              <h3 className="text-lg font-black text-white">{service.name[lang]}</h3>
-              <p className="text-sm text-slate-300">{service.features[lang]}</p>
+              <h3 className="text-lg font-black text-white">{displayService.name[lang]}</h3>
+              <p className="text-sm text-slate-300">{displayService.features[lang]}</p>
               <div className="flex gap-3 pt-2">
                 <button
                   onClick={handleCloseModal}
@@ -145,14 +207,14 @@ const ProductDetails: React.FC<Props> = ({ service, lang, onBook, displayRate })
       <div className="p-6 space-y-8 -mt-8 relative z-10 bg-white rounded-t-[40px] border-t-4 border-[#FFB7C5]/30">
         <div className="flex justify-between items-start">
           <div className="space-y-1">
-            <h2 className="text-3xl font-black text-slate-800">{service.name[lang]}</h2>
+            <h2 className="text-3xl font-black text-slate-800">{displayService.name[lang]}</h2>
             <div className="flex items-center gap-2 text-pink-400 font-bold">
               <Star size={16} fill="currentColor" />
               <span>4.9 (120+ Reviews)</span>
             </div>
           </div>
           <div className="bg-[#FFF9C4] px-4 py-2 rounded-[20px] font-black text-yellow-800 border-2 border-yellow-200">
-            {displayRate || service.rate}
+            {displayRate || displayService.rate}
           </div>
         </div>
 
@@ -169,20 +231,20 @@ const ProductDetails: React.FC<Props> = ({ service, lang, onBook, displayRate })
             </thead>
             <tbody className="divide-y divide-teal-50">
               <tr className="hover:bg-teal-50/50 transition-colors">
-                <td className="px-6 py-4 font-bold text-slate-700">{service.name[lang]}</td>
-                <td className="px-6 py-4 text-xs font-medium text-slate-500 max-w-[150px]">{service.features[lang]}</td>
-                <td className="px-6 py-4 text-sm font-black text-teal-600">{service.time}</td>
-                <td className="px-6 py-4 font-black text-pink-500">{service.rate}</td>
+                <td className="px-6 py-4 font-bold text-slate-700">{displayService.name[lang]}</td>
+                <td className="px-6 py-4 text-xs font-medium text-slate-500 max-w-[150px]">{displayService.features[lang]}</td>
+                <td className="px-6 py-4 text-sm font-black text-teal-600">{displayService.time}</td>
+                <td className="px-6 py-4 font-black text-pink-500">{displayService.rate}</td>
               </tr>
             </tbody>
           </table>
         </div>
 
         {/* Service Description Section */}
-        {service.features && service.features[lang] && (
+        {displayService.features && displayService.features[lang] && (
           <div className="p-4 bg-pink-50 border-2 border-pink-100 rounded-[20px]">
             <h3 className="text-sm font-black text-slate-800 mb-2">{t.features || 'Service Details'}</h3>
-            <p className="text-sm font-medium text-slate-600 leading-relaxed">{service.features[lang]}</p>
+            <p className="text-sm font-medium text-slate-600 leading-relaxed">{displayService.features[lang]}</p>
           </div>
         )}
 
