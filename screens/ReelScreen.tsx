@@ -69,7 +69,7 @@ const ReelScreen: React.FC<Props> = ({ lang, services, onBook, onClose, onBack, 
         {onBack && (
           <button
             onClick={onBack}
-            className="bg-white/20 hover:bg-white/40 backdrop-blur-sm text-white p-2.5 rounded-full transition-all active:scale-95 pointer-events-auto"
+            className="bg-gray-800 hover:bg-gray-700 text-white p-2.5 rounded-full transition-all active:scale-95 pointer-events-auto"
             title="Go back to home"
           >
             <ArrowLeft size={24} />
@@ -80,7 +80,7 @@ const ReelScreen: React.FC<Props> = ({ lang, services, onBook, onClose, onBack, 
         {onClose && (
           <button
             onClick={onClose}
-            className="bg-white/20 hover:bg-white/40 backdrop-blur-sm text-white p-2.5 rounded-full transition-all active:scale-95 pointer-events-auto ml-auto"
+            className="bg-gray-800 hover:bg-gray-700 text-white p-2.5 rounded-full transition-all active:scale-95 pointer-events-auto ml-auto"
             title="Close reels"
           >
             <X size={24} />
@@ -408,23 +408,23 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
         </button>
       </div>
 
-      {/* Left-side Title + Description + Prominent Book Now (5-10% from bottom, crisp clean) */}
+      {/* Left-side Title + Description + Prominent Book Now (5-10% from bottom, NO BLUR) */}
       <div className="absolute left-4 right-20 bottom-8 z-30 max-w-[70%] text-white pointer-events-auto">
-        <div className="bg-gradient-to-t from-black via-black/70 to-transparent p-5 rounded-xl">
-          <h3 className="font-black text-lg leading-snug drop-shadow-lg">{localizeField((service as any).serviceName || (service as any).title || (service as any).name || (service as any).service) || 'Service'}</h3>
+        <div className="bg-black/95 p-4 rounded-lg">
+          <h3 className="font-black text-base leading-snug drop-shadow-lg">{localizeField((service as any).serviceName || (service as any).title || (service as any).name || (service as any).service) || 'Service'}</h3>
           {localizeField((service as any).description || (service as any).features) ? (
-            <p className="mt-1.5 text-xs text-white/90 leading-tight drop-shadow-md">{localizeField((service as any).description || (service as any).features)}</p>
+            <p className="mt-1 text-xs text-white/95 leading-tight drop-shadow-sm">{localizeField((service as any).description || (service as any).features)}</p>
           ) : null}
 
           {(service as any).serviceId ? (
-            <div className="mt-3">
+            <div className="mt-2.5">
               <button
                 onClick={(e) => { e.stopPropagation(); onBook(service); }}
-                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full font-extrabold text-white text-base shadow-md hover:shadow-[0_0_15px_rgba(255,60,172,0.4)] active:scale-95 transition-all duration-200"
+                className="inline-flex items-center gap-2 px-5 py-2 rounded-full font-extrabold text-white text-sm active:scale-95 transition-all duration-200"
                 style={{ background: 'linear-gradient(135deg,#FF3CAC 0%, #FFD166 100%)' }}
                 title={t.bookNow}
               >
-                <Play size={18} className="inline-block" />
+                <Play size={16} className="inline-block" />
                 {t.bookNow}
               </button>
             </div>
@@ -433,18 +433,18 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
       </div>
       </div>
 
-      {/* Comments Bottom Sheet (glassmorphism, 60% height) */}
+      {/* Comments Bottom Sheet (clean solid, NO BLUR) */}
       {showComments && (
         <>
-          <div className="fixed inset-0 bg-black/40 z-30 backdrop-blur-sm" onClick={() => setShowComments(false)} />
+          <div className="fixed inset-0 bg-black/50 z-30" onClick={() => setShowComments(false)} />
           <div className="fixed inset-x-0 bottom-0 z-40 flex items-end justify-center">
-            <div className="w-full max-w-3xl h-[60vh] bg-white/12 backdrop-blur-2xl border-t border-white/20 rounded-t-3xl p-5 text-white shadow-2xl transform transition-transform">
+            <div className="w-full max-w-3xl h-[60vh] bg-gray-900 border-t border-gray-700 rounded-t-3xl p-5 text-white shadow-2xl transform transition-transform">
               {/* drag handle */}
-              <div className="w-14 h-1.5 bg-white/40 rounded-full mx-auto mb-4" />
+              <div className="w-14 h-1.5 bg-gray-700 rounded-full mx-auto mb-4" />
 
               <div className="flex items-center justify-between mb-4">
                 <h4 className="font-black text-xl">Comments ({comments.length})</h4>
-                <button onClick={() => setShowComments(false)} className="px-4 py-1.5 bg-white/10 hover:bg-white/20 rounded-full text-sm font-bold transition-colors">Close</button>
+                <button onClick={() => setShowComments(false)} className="px-4 py-1.5 bg-gray-700 hover:bg-gray-600 rounded-full text-sm font-bold transition-colors">Close</button>
               </div>
 
               <div className="h-[48vh] overflow-y-auto pb-24 space-y-3 pr-2">
@@ -459,10 +459,10 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
                 )}
               </div>
 
-              {/* Input bar fixed at bottom of sheet */}
-              <div className="absolute left-0 right-0 bottom-0 max-w-3xl mx-auto px-5 py-4 bg-gradient-to-t from-black/20 to-transparent">
-                <div className="flex gap-3 items-center bg-white/8 rounded-full px-4 py-3 border border-white/10">
-                  <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center font-bold text-sm flex-shrink-0">{(() => {
+              {/* Input bar - SOLID STYLING, NO BLUR */}
+              <div className="absolute left-0 right-0 bottom-0 max-w-3xl mx-auto px-5 py-4 bg-gray-900">
+                <div className="flex gap-3 items-center bg-gray-800 rounded-full px-4 py-3 border border-gray-700">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-500 to-yellow-400 flex items-center justify-center font-bold text-sm flex-shrink-0 text-white">{(() => {
                     const u = (localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user') as string) : null);
                     return u && u.name ? u.name.charAt(0).toUpperCase() : 'U';
                   })()}</div>
@@ -518,7 +518,7 @@ const CommentRow: React.FC<{ c: any }> = ({ c }) => {
   const commentText = typeof c === 'string' ? c : c.text || '';
 
   return (
-    <div className="flex gap-3 items-start p-3 bg-white/5 rounded-xl hover:bg-white/8 transition-colors">
+    <div className="flex gap-3 items-start p-3 bg-gray-800 rounded-xl hover:bg-gray-700 transition-colors">
       <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#FF3CAC] to-[#FFD166] flex items-center justify-center font-bold text-sm flex-shrink-0">{userInitial}</div>
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-2">
@@ -527,7 +527,7 @@ const CommentRow: React.FC<{ c: any }> = ({ c }) => {
             <div className="text-xs text-white/50 mt-0.5">{timeAgo(created)}</div>
           </div>
           <button onClick={() => setLiked(!liked)} className={`p-1.5 rounded-full transition-all flex-shrink-0 ${
-            liked ? 'bg-white/20' : 'bg-white/5 hover:bg-white/10'
+            liked ? 'bg-gray-700' : 'bg-gray-800 hover:bg-gray-700'
           }`}>
             <Heart size={16} fill={liked ? '#FF3CAC' : 'none'} className={liked ? 'text-[#FF3CAC]' : 'text-white/60'} />
           </button>
