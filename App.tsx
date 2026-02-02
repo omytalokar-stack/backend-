@@ -549,7 +549,7 @@ const App: React.FC = () => {
                 setAdminSidebarOpen(false);
               }}
               className="fixed inset-0 bg-black/60 z-30 transition-opacity duration-300"
-              style={{ pointerEvents: 'auto' }}
+              style={{ pointerEvents: 'auto', cursor: 'pointer' }}
             />
           )}
 
@@ -580,6 +580,7 @@ const App: React.FC = () => {
             {/* Menu Items */}
             <div className="p-3 space-y-2">
               <button 
+                type="button"
                 onClick={() => { setAdminTab('dashboard'); setAdminSidebarOpen(false); }}
                 className={`w-full text-left px-4 py-3 rounded-lg font-bold text-sm transition-all ${
                   adminTab === 'dashboard' 
@@ -590,6 +591,7 @@ const App: React.FC = () => {
                 📊 Dashboard
               </button>
               <button 
+                type="button"
                 onClick={() => { setAdminTab('services'); setAdminSidebarOpen(false); }}
                 className={`w-full text-left px-4 py-3 rounded-lg font-bold text-sm transition-all ${
                   adminTab === 'services' 
@@ -600,6 +602,7 @@ const App: React.FC = () => {
                 🛍️ Services
               </button>
               <button 
+                type="button"
                 onClick={() => { setAdminTab('reels'); setAdminSidebarOpen(false); }}
                 className={`w-full text-left px-4 py-3 rounded-lg font-bold text-sm transition-all ${
                   adminTab === 'reels' 
@@ -610,6 +613,7 @@ const App: React.FC = () => {
                 🎬 Reels
               </button>
               <button 
+                type="button"
                 onClick={() => { setAdminTab('orders'); setAdminSidebarOpen(false); }}
                 className={`w-full text-left px-4 py-3 rounded-lg font-bold text-sm transition-all ${
                   adminTab === 'orders' 
@@ -620,6 +624,7 @@ const App: React.FC = () => {
                 📦 Orders
               </button>
               <button 
+                type="button"
                 onClick={() => { setAdminTab('users'); setAdminSidebarOpen(false); }}
                 className={`w-full text-left px-4 py-3 rounded-lg font-bold text-sm transition-all ${
                   adminTab === 'users' 
@@ -632,11 +637,12 @@ const App: React.FC = () => {
             </div>
           </div>
 
-          {/* Main Content - Always full width */}
-          <div className="flex-1 flex flex-col w-full h-full overflow-hidden">
+          {/* Main Content - Always full width, pointer-events auto to allow clicks */}
+          <div className="flex-1 flex flex-col w-full h-full overflow-hidden" style={{ pointerEvents: adminSidebarOpen ? 'none' : 'auto' }}>
             {/* Header */}
-            <div className="sticky top-0 z-30 px-4 py-3 flex items-center gap-3 bg-white border-b border-slate-100 flex-shrink-0">
+            <div className="sticky top-0 z-20 px-4 py-3 flex items-center gap-3 bg-white border-b border-slate-100 flex-shrink-0">
               <button 
+                type="button"
                 onClick={() => setAdminSidebarOpen(v => !v)}
                 aria-label="Toggle admin menu"
                 className="p-2 hover:bg-slate-100 rounded-lg transition-colors flex-shrink-0"
