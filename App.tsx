@@ -139,6 +139,47 @@ const App: React.FC = () => {
     }
   }, []);
 
+  // Deep-link support: if user visits /service-details/:id, open canonical ProductDetails
+  useEffect(() => {
+    if (!servicesLoaded) return;
+
+    try {
+      const match = window.location.pathname.match(/^\/service-details\/([^/]+)/);
+      if (match && match[1]) {
+        const sid = match[1];
+
+        // Try to find service in loaded DB services
+        let svc: any = dbServices.find(s => s._id === sid || s.id === sid);
+
+        // Fallback: try to find via public reels mapping
+        if (!svc && publicReels && publicReels.length > 0) {
+          const reelMatch = publicReels.find(r => {
+            const rid = (r.serviceId && (r.serviceId._id || r.serviceId)) || r.serviceId;
+            return rid === sid;
+          });
+          if (reelMatch) {
+            svc = reelMatch.service || reelMatch;
+          }
+        }
+
+        // If still not found, fetch from API as last resort
+        if (!svc) {
+          fetch(`${API_BASE}/api/admin/services-public/${sid}`).then(r => r.ok ? r.json() : Promise.reject()).then(data => {
+            if (data) {
+              setSelectedService(data);
+              setView('product');
+            }
+          }).catch(() => {});
+        } else {
+          setSelectedService(svc);
+          setView('product');
+        }
+      }
+    } catch (e) {
+      console.warn('⚠️ Deep-link parsing failed:', e);
+    }
+  }, [servicesLoaded, dbServices, publicReels]);
+
   // Play opening sound on first app load and sync with animation
   useEffect(() => {
     if (isCheckingAuth === false && !playedOpeningSound) {
@@ -364,10 +405,24 @@ const App: React.FC = () => {
     // Track clicks for trending
     const raw = localStorage.getItem('serviceClicks');
     const clicks = raw ? JSON.parse(raw) : {};
-    clicks[service.id] = (clicks[service.id] || 0) + 1;
+    const serviceId = (service as any)._id || service.id;
+    clicks[serviceId] = (clicks[serviceId] || 0) + 1;
     localStorage.setItem('serviceClicks', JSON.stringify(clicks));
+
+    // Set selected service and open canonical product view
     setSelectedService(service);
     setView('product');
+
+    // Push canonical URL for the service details so the same page is reachable
+    if (serviceId) {
+      const target = `/service-details/${serviceId}`;
+      try {
+        window.history.pushState({ view: 'product', serviceId }, '', target);
+      } catch (e) {
+        // In case environments block pushState, fall back to replace
+        window.history.replaceState({ view: 'product', serviceId }, '', target);
+      }
+    }
   };
 
   const handleBookingStart = () => {
