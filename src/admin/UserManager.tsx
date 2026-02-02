@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { API_BASE } from '../api';
+import { Phone } from 'lucide-react';
 
 type UserItem = {
   _id: string;
@@ -11,6 +12,8 @@ type UserItem = {
   isOfferClaimed?: boolean;
   isOfferUsed?: boolean;
 };
+
+const DEFAULT_CALLER_ID = '8767619160';
 
 const UserManager: React.FC = () => {
   const [users, setUsers] = useState<UserItem[]>([]);
@@ -29,6 +32,19 @@ const UserManager: React.FC = () => {
     load();
   }, []);
 
+  const handleCallNow = (userPhone?: string) => {
+    const phoneToCall = userPhone || DEFAULT_CALLER_ID;
+    // Clean phone number: remove all non-digit characters
+    const cleanPhone = phoneToCall.replace(/\D/g, '');
+    // Ensure it's at least 10 digits
+    if (cleanPhone.length >= 10) {
+      // Use tel: scheme to open native phone dialer
+      window.location.href = `tel:+91${cleanPhone}`;
+    } else {
+      alert(`Invalid phone number: ${phoneToCall}`);
+    }
+  };
+
   return (
     <div className="space-y-2 pb-24">
       {users.length === 0 ? (
@@ -40,7 +56,10 @@ const UserManager: React.FC = () => {
               <img src={u.avatarUrl || 'https://picsum.photos/seed/u/50/50'} className="w-12 h-12 rounded-full object-cover flex-shrink-0 border border-slate-200" onError={(e) => { (e.currentTarget as HTMLImageElement).src = 'https://picsum.photos/seed/u/50/50'; }} />
               <div className="flex-1 min-w-0">
                 <div className="font-bold text-slate-800 text-sm truncate">{u.email || u.phone || 'Unknown'}</div>
-                <div className="text-xs text-slate-500">{u.nickname || u.role || 'User'}</div>
+                <div className="text-xs text-slate-500">
+                  {u.phone ? `📱 ${u.phone}` : 'No phone number'}
+                </div>
+                <div className="text-xs text-slate-400">{u.nickname || u.role || 'User'}</div>
               </div>
             </div>
             <div className="flex gap-2 text-xs pt-2 border-t border-slate-100">
@@ -50,6 +69,15 @@ const UserManager: React.FC = () => {
               <span className={`px-2.5 py-1.5 rounded-[10px] font-bold flex-1 text-center ${u.isOfferUsed ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
                 {u.isOfferUsed ? '✓ Used' : 'Unused'}
               </span>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleCallNow(u.phone)}
+                className="flex-1 px-4 py-2.5 bg-gradient-to-r from-blue-400 to-blue-500 text-white font-bold rounded-[15px] flex items-center justify-center gap-2 hover:shadow-lg active:scale-95 transition-all text-sm"
+              >
+                <Phone size={18} />
+                📞 Call Now
+              </button>
             </div>
           </div>
         ))

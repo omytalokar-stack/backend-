@@ -360,6 +360,7 @@ exports.getProfile = async (req, res) => {
         email: user.email,
         name: user.name,
         picture: user.picture,
+        phone: user.phone || null,
         role: user.role,
         nickname: user.nickname,
         avatarUrl: user.avatarUrl,
