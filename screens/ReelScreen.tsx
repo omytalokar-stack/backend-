@@ -358,21 +358,21 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
           <div className="text-white font-bold text-center">No video available</div>
         )}
 
-      {/* Right-side engagement vertical bar (icons + counts) */}
-      <div className="absolute right-4 top-1/2 transform -translate-y-1/2 flex flex-col gap-6 items-center z-30 pointer-events-auto">
+      {/* Right-side engagement vertical bar (icons + counts) - moved to bottom-right */}
+      <div className="absolute right-4 bottom-28 flex flex-col gap-6 items-center z-30 pointer-events-auto">
         <button onClick={() => setLiked(!liked)} className="flex flex-col items-center gap-2">
-          <Heart size={28} fill={liked ? '#FFB7C5' : 'none'} className={liked ? 'text-[#FFB7C5]' : 'text-white drop-shadow-lg'} />
-          <span className="text-xs font-bold text-white drop-shadow-sm">{likesCount}</span>
+          <Heart size={30} fill={liked ? '#FF3CAC' : 'none'} className={liked ? 'text-[#FF3CAC] drop-shadow-xl' : 'text-white drop-shadow-lg'} />
+          <span className="text-sm font-extrabold text-white drop-shadow-sm">{likesCount}</span>
         </button>
 
         <button onClick={() => setShowComments(true)} className="flex flex-col items-center gap-2">
-          <MessageCircle size={26} className="text-white drop-shadow-lg" />
-          <span className="text-xs font-bold text-white drop-shadow-sm">{/* comments count not tracked here */}</span>
+          <MessageCircle size={28} className="text-white drop-shadow-lg" />
+          <span className="text-sm font-extrabold text-white drop-shadow-sm">{comments.length}</span>
         </button>
 
         <button onClick={handleSaveReel} className="flex flex-col items-center gap-2">
-          <Bookmark size={24} className="text-white drop-shadow-lg" />
-          <span className="text-xs font-bold text-white drop-shadow-sm">{t.save}</span>
+          <Bookmark size={26} className="text-white drop-shadow-lg" />
+          <span className="text-sm font-extrabold text-white drop-shadow-sm">{t.save}</span>
         </button>
       </div>
 
@@ -401,42 +401,56 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
       </div>
       </div>
 
-      {/* Comments Modal */}
+      {/* Comments Bottom Sheet (glassmorphism) */}
       {showComments && (
-        <div className="absolute inset-x-0 bottom-0 bg-white rounded-t-[30px] border-t-4 border-slate-100 shadow-2xl p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <h4 className="font-black text-slate-800">Comments ({comments.length})</h4>
-            <button onClick={() => setShowComments(false)} className="text-slate-400 font-bold">Close</button>
-          </div>
-          <div className="flex gap-2">
-            <input 
-              value={commentInput}
-              onChange={(e) => setCommentInput(e.target.value)}
-              placeholder="Write a comment..."
-              className="flex-1 px-3 py-2 border-2 border-slate-200 rounded-[20px]"
-              disabled={loadingComments}
-            />
-            <button onClick={handleAddComment} className="px-4 py-2 bg-[#FFB7C5] text-white rounded-[20px] font-black active:scale-95" disabled={loadingComments}>Post</button>
-          </div>
-          <div className="space-y-2 max-h-48 overflow-y-auto">
-            {loadingComments ? (
-              <p className="text-slate-400 text-sm font-bold">Loading comments...</p>
-            ) : comments.length === 0 ? (
-              <p className="text-slate-400 text-sm font-bold">No comments yet. Be the first!</p>
-            ) : (
-              comments.map((c) => (
-                <div key={c._id || c} className="p-3 border-2 border-slate-100 rounded-[15px] space-y-1">
-                  <div className="flex justify-between items-start">
-                    <p className="font-bold text-slate-700 text-sm">{c.userName || 'User'}</p>
-                    <p className="text-xs text-slate-400">{c.createdAt ? new Date(c.createdAt).toLocaleDateString() : ''}</p>
-                  </div>
-                  <p className="text-slate-700 text-sm">{typeof c === 'string' ? c : c.text}</p>
-                </div>
-              ))
-            )}
+        <div className="fixed inset-x-0 bottom-0 z-40 flex items-end justify-center">
+          <div className="w-full max-w-3xl h-[66vh] bg-white/8 backdrop-blur-xl border border-white/10 rounded-t-3xl p-4 text-white shadow-2xl transform transition-transform">
+            {/* drag handle */}
+            <div className="w-12 h-1.5 bg-white/30 rounded-full mx-auto mb-3" />
+
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="font-extrabold text-lg">Comments ({comments.length})</h4>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setShowComments(false)} className="px-3 py-1 bg-white/6 rounded-full">Close</button>
+              </div>
+            </div>
+
+            <div className="h-[52vh] overflow-y-auto pb-24 space-y-3">
+              {loadingComments ? (
+                <p className="text-white/60 text-sm font-bold">Loading comments...</p>
+              ) : comments.length === 0 ? (
+                <p className="text-white/60 text-sm font-bold">No comments yet. Be the first!</p>
+              ) : (
+                comments.map((c) => (
+                  <CommentRow key={c._id || c.createdAt || Math.random()} c={c} />
+                ))
+              )}
+            </div>
+
+            {/* Input bar fixed inside sheet */}
+            <div className="fixed left-0 right-0 bottom-0 max-w-3xl mx-auto px-4 pb-6">
+              <div className="flex gap-2 items-center bg-white/6 rounded-full p-2">
+                <div className="w-9 h-9 rounded-full bg-white/12 flex items-center justify-center font-bold text-sm">{(() => {
+                  const u = (localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user') as string) : null);
+                  return u && u.name ? u.name.charAt(0).toUpperCase() : 'U';
+                })()}</div>
+                <input
+                  value={commentInput}
+                  onChange={(e) => setCommentInput(e.target.value)}
+                  placeholder="Add a comment..."
+                  className="flex-1 bg-transparent outline-none px-2 text-white"
+                  disabled={loadingComments}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleAddComment(); }}
+                />
+                <button onClick={handleAddComment} className="px-3 py-2 bg-gradient-to-r from-[#FF3CAC] to-[#FFD166] rounded-full font-black text-white">Send</button>
+              </div>
+            </div>
           </div>
         </div>
       )}
+
+      {/* CommentRow component (inline) */}
+      
     </div>
   );
 };
@@ -449,5 +463,46 @@ const InteractionButton: React.FC<{ icon: React.ReactNode; label: string; onClic
     <span className="text-[10px] text-white font-bold uppercase tracking-widest drop-shadow-md">{label}</span>
   </button>
 );
+
+// Inline CommentRow component to render each comment with avatar, time-ago and like
+const CommentRow: React.FC<{ c: any }> = ({ c }) => {
+  const [liked, setLiked] = useState<boolean>(false);
+  const created = c && c.createdAt ? new Date(c.createdAt) : null;
+
+  const timeAgo = (d: Date | null) => {
+    if (!d) return '';
+    const secs = Math.floor((Date.now() - d.getTime()) / 1000);
+    if (secs < 60) return `${secs}s`;
+    const mins = Math.floor(secs / 60);
+    if (mins < 60) return `${mins}m`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h`;
+    const days = Math.floor(hrs / 24);
+    return `${days}d`;
+  };
+
+  const userInitial = (c && c.userName) ? c.userName.charAt(0).toUpperCase() : 'U';
+
+  return (
+    <div className="flex gap-3 items-start p-2">
+      <div className="w-10 h-10 rounded-full bg-white/12 flex items-center justify-center font-bold text-sm">{userInitial}</div>
+      <div className="flex-1">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="font-bold text-white text-sm">{c.userName || 'User'}</div>
+            <div className="text-xs text-white/60">{timeAgo(created)}</div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="text-sm text-white/60">{c.likes || 0}</div>
+            <button onClick={() => setLiked(!liked)} className={`p-1 rounded-full ${liked ? 'bg-white/10' : 'bg-transparent'}`}>
+              <Heart size={16} fill={liked ? '#FF3CAC' : 'none'} className={liked ? 'text-[#FF3CAC]' : 'text-white/70'} />
+            </button>
+          </div>
+        </div>
+        <div className="mt-1 text-white text-sm">{typeof c === 'string' ? c : c.text}</div>
+      </div>
+    </div>
+  );
+};
 
 export default ReelScreen;
