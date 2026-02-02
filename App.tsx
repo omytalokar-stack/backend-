@@ -275,6 +275,17 @@ const App: React.FC = () => {
     }).catch(() => {});
   }, [view, isAdminUser]);
 
+  // Close admin sidebar on Escape key (mobile friendly)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && adminSidebarOpen) {
+        setAdminSidebarOpen(false);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [adminSidebarOpen]);
+
   const parsePrice = (str: string) => {
     const num = parseInt(str.replace(/[^\d]/g, ''), 10);
     return isNaN(num) ? 0 : num;
@@ -534,20 +545,24 @@ const App: React.FC = () => {
           {adminSidebarOpen && (
             <div 
               onClick={() => setAdminSidebarOpen(false)}
-              className="fixed inset-0 bg-black/50 z-40 transition-opacity duration-300"
+              className="fixed inset-0 bg-black/50 z-40 transition-opacity duration-300 pointer-events-auto"
             />
           )}
 
           {/* DRAWER MENU - Fixed position, overlays content on mobile */}
-          <div className={`fixed top-0 left-0 h-screen w-[280px] bg-white shadow-2xl z-50 transition-all duration-300 ease-out overflow-y-auto ${
-            adminSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-          }`}>
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className={`fixed top-0 left-0 h-screen w-[280px] bg-white shadow-2xl z-50 transition-all duration-300 ease-out overflow-y-auto ${
+              adminSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+            }`}>
             {/* Drawer Header */}
             <div className="sticky top-0 bg-white border-b border-slate-100 px-4 py-4 flex items-center justify-between">
               <h2 className="text-lg font-black text-slate-800">Admin</h2>
               <button 
                 onClick={() => setAdminSidebarOpen(false)}
-                className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-600"
+                aria-label="Close admin menu"
+                className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-600 pointer-events-auto"
+                style={{ zIndex: 999 }}
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
