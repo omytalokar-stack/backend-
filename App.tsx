@@ -630,7 +630,8 @@ const App: React.FC = () => {
             {/* Header */}
             <div className="sticky top-0 z-30 px-4 py-3 flex items-center gap-3 bg-white border-b border-slate-100 flex-shrink-0">
               <button 
-                onClick={() => setAdminSidebarOpen(true)}
+                onClick={() => setAdminSidebarOpen(v => !v)}
+                aria-label="Toggle admin menu"
                 className="p-2 hover:bg-slate-100 rounded-lg transition-colors flex-shrink-0"
               >
                 <Menu size={24} className="text-slate-700" />
