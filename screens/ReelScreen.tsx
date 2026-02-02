@@ -106,6 +106,29 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
   const containerRef = useRef<HTMLDivElement>(null);
   const reelId = (service as any)._id || service.id;
 
+  // Likes: show count and poll backend so admin changes reflect quickly
+  const [likesCount, setLikesCount] = useState<number>((service as any).likes || 0);
+
+  React.useEffect(() => {
+    let mounted = true;
+    const fetchMeta = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/reels/${reelId}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!mounted) return;
+        if (typeof data.likes === 'number') setLikesCount(data.likes);
+      } catch (e) {
+        // ignore
+      }
+    };
+
+    // Initial fetch + interval polling for admin-updated likes
+    fetchMeta();
+    const iv = setInterval(fetchMeta, 5000);
+    return () => { mounted = false; clearInterval(iv); };
+  }, [reelId]);
+
   // Fetch comments from backend when component mounts or when showComments changes
   React.useEffect(() => {
     if (showComments && reelId) {
@@ -290,40 +313,47 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
           <div className="text-white font-bold text-center">No video available</div>
         )}
 
-      {/* Interactions */}
-      <div className="absolute right-4 bottom-32 flex flex-col gap-4 items-center z-10">
-        <InteractionButton 
-          icon={<Heart size={24} fill={liked ? '#FFB7C5' : 'none'} className={liked ? 'text-[#FFB7C5]' : 'text-white'} />} 
-          label={t.like}
-          onClick={() => setLiked(!liked)}
-        />
-        <InteractionButton 
-          icon={<MessageCircle size={24} className="text-white" />} 
-          label={t.comment}
-          onClick={() => setShowComments(true)}
-        />
-        <InteractionButton 
-          icon={<Bookmark size={24} className="text-white" />} 
-          label={t.save}
-          onClick={handleSaveReel}
-        />
-        <InteractionButton 
-          icon={<Gift size={24} className="text-yellow-400" />} 
-          label={t.offers}
-        />
+      {/* Right-side engagement vertical bar (icons + counts) */}
+      <div className="absolute right-4 top-1/2 transform -translate-y-1/2 flex flex-col gap-6 items-center z-30 pointer-events-auto">
+        <button onClick={() => setLiked(!liked)} className="flex flex-col items-center gap-2">
+          <Heart size={28} fill={liked ? '#FFB7C5' : 'none'} className={liked ? 'text-[#FFB7C5]' : 'text-white drop-shadow-lg'} />
+          <span className="text-xs font-bold text-white drop-shadow-sm">{likesCount}</span>
+        </button>
+
+        <button onClick={() => setShowComments(true)} className="flex flex-col items-center gap-2">
+          <MessageCircle size={26} className="text-white drop-shadow-lg" />
+          <span className="text-xs font-bold text-white drop-shadow-sm">{/* comments count not tracked here */}</span>
+        </button>
+
+        <button onClick={handleSaveReel} className="flex flex-col items-center gap-2">
+          <Bookmark size={24} className="text-white drop-shadow-lg" />
+          <span className="text-xs font-bold text-white drop-shadow-sm">{t.save}</span>
+        </button>
       </div>
 
-      {/* Small Book button (bottom-left) - transparent background */}
-      {(service as any).serviceId ? (
-        <button
-          onClick={(e) => { e.stopPropagation(); onBook(service); }}
-          className="absolute left-4 bottom-6 z-30 px-3 py-1.5 bg-white/10 backdrop-blur-sm text-white font-black text-sm rounded-full shadow-sm hover:bg-white/20 active:scale-95"
-          title={t.bookNow}
-        >
-          <Play size={14} className="inline-block mr-2" />
-          {t.bookNow}
-        </button>
-      ) : null}
+      {/* Left-side Title + Description + Prominent Book Now (no big black box, subtle gradient) */}
+      <div className="absolute left-4 bottom-24 z-30 max-w-[62%] text-white pointer-events-auto">
+        <div className="bg-gradient-to-t from-black/60 via-black/30 to-transparent p-3 rounded-xl backdrop-blur-sm">
+          <h3 className="font-extrabold text-lg leading-tight drop-shadow-md">{(service as any).serviceName || (service as any).title || (service as any).name || (service as any).service || 'Service'}</h3>
+          {service.description ? (
+            <p className="mt-1 text-sm text-white/90 leading-snug drop-shadow-sm">{service.description}</p>
+          ) : null}
+
+          {(service as any).serviceId ? (
+            <div className="mt-3">
+              <button
+                onClick={(e) => { e.stopPropagation(); onBook(service); }}
+                className="inline-flex items-center gap-3 px-5 py-3 rounded-full font-extrabold text-white text-base shadow-lg hover:scale-[0.99] transition-transform"
+                style={{ background: 'linear-gradient(90deg,#FF3CAC 0%, #FFD166 100%)' }}
+                title={t.bookNow}
+              >
+                <Play size={18} className="inline-block" />
+                {t.bookNow}
+              </button>
+            </div>
+          ) : null}
+        </div>
+      </div>
       </div>
 
       {/* Comments Modal */}
