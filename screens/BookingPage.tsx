@@ -45,7 +45,15 @@ const BookingPage: React.FC<Props> = ({ service, lang, onConfirm, getDisplayRate
     console.log(`⏳ Booking: Fetching complete service data for ${serviceId}...`);
     setLoadingService(true);
     fetch(`${API_BASE}/api/admin/services-public/${serviceId}`)
-      .then(res => res.ok ? res.json() : null)
+      .then(res => {
+        if (!res.ok) {
+          if (res.status === 404) {
+            console.warn(`⚠️ Service ${serviceId} not found (404) - may be deleted`);
+          }
+          return null;
+        }
+        return res.json();
+      })
       .then(data => {
         if (data && data.name && data.rate) {
           setFullService(data);

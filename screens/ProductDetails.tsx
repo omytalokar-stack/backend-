@@ -50,7 +50,12 @@ const ProductDetails: React.FC<Props> = ({ service, lang, onBook, displayRate })
     setLoading(true);
     fetch(`${API_BASE}/api/admin/services-public/${serviceId}`)
       .then(res => {
-        if (!res.ok) throw new Error(`${res.status}`);
+        if (!res.ok) {
+          if (res.status === 404) {
+            console.warn(`⚠️ Service ${serviceId} not found (404)`);
+          }
+          throw new Error(`${res.status}`);
+        }
         return res.json();
       })
       .then(data => {
@@ -66,7 +71,6 @@ const ProductDetails: React.FC<Props> = ({ service, lang, onBook, displayRate })
         console.error('❌ Error fetching service:', e);
         setFullService(service);
       })
-      .finally(() => setLoading(false));
   }, [service]);
 
   // Auto-play video when modal opens

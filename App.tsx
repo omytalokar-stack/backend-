@@ -175,12 +175,34 @@ const App: React.FC = () => {
 
         // If still not found, fetch from API as last resort
         if (!svc) {
-          fetch(`${API_BASE}/api/admin/services-public/${sid}`).then(r => r.ok ? r.json() : Promise.reject()).then(data => {
-            if (data) {
-              setSelectedService(data);
-              setView('product');
-            }
-          }).catch(() => {});
+          fetch(`${API_BASE}/api/admin/services-public/${sid}`)
+            .then(r => {
+              if (!r.ok) {
+                console.warn(`⚠️ Service ${sid} not found (${r.status}) - may be deleted`);
+                if (r.status === 404) {
+                  // Remove this ID from saved reels if it's there
+                  const user = localStorage.getItem('user');
+                  if (user) {
+                    const userObj = JSON.parse(user);
+                    if (userObj.savedReels) {
+                      userObj.savedReels = userObj.savedReels.filter((id: string) => id !== sid);
+                      localStorage.setItem('user', JSON.stringify(userObj));
+                    }
+                  }
+                }
+                throw new Error(`Service not found: ${r.status}`);
+              }
+              return r.json();
+            })
+            .then(data => {
+              if (data) {
+                setSelectedService(data);
+                setView('product');
+              }
+            })
+            .catch(err => {
+              console.error('❌ Failed to fetch service:', err);
+            });
         } else {
           setSelectedService(svc);
           setView('product');
@@ -233,20 +255,30 @@ const App: React.FC = () => {
   useEffect(() => {
     console.log('📦 Fetching services from database...');
     fetch(`${API_BASE}/api/admin/services-public`)
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) {
+          console.error(`❌ Services fetch failed: ${r.status}`);
+          if (r.status === 404) {
+            console.warn('⚠️ Services endpoint returned 404 - clearing cache and reloading');
+            localStorage.clear();
+            setTimeout(() => window.location.reload(), 500);
+          }
+          throw new Error(`HTTP ${r.status}`);
+        }
+        return r.json();
+      })
       .then(services => {
         if (Array.isArray(services) && services.length > 0) {
           console.log('✅ Loaded', services.length, 'services from database');
           setDbServices(services);
         } else {
-          console.warn('⚠️ No services available from database; leaving services empty (no mock data)');
+          console.warn('⚠️ No services available from database');
           setDbServices([]);
         }
         setServicesLoaded(true);
       })
       .catch(err => {
         console.error('❌ Failed to load services:', err);
-        // Do NOT fall back to mock data. Surface the error and expose empty services.
         setDbServices([]);
         setServicesLoaded(true);
       });
