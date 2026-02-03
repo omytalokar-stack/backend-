@@ -149,7 +149,6 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
   const [comments, setComments] = useState<any[]>([]);
   const [loadingComments, setLoadingComments] = useState(false);
   const [postingComment, setPostingComment] = useState(false);
-  const [reelMissing, setReelMissing] = useState(false); // true when backend returns 404 for this reel
   const [isMuted, setIsMuted] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -195,20 +194,13 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
   React.useEffect(() => {
     let mounted = true;
     let iv: NodeJS.Timeout | null = null;
-    let skip404 = false; // Flag to stop polling on 404
     
     const fetchMeta = async () => {
-      if (skip404) return; // Skip if reel was already 404
-      
       try {
         const res = await fetch(`${API_BASE}/api/reels/${reelId}`);
         if (!res.ok) {
-          if (res.status === 404) {
-            console.warn(`⚠️ Reel ${reelId} not found (404) - stopping polls`);
-            skip404 = true; // Stop all future polls
-            setReelMissing(true);
-            if (iv) clearInterval(iv); // Clear the interval
-          }
+          // Silently skip on 404 or other errors - don't block user interactions
+          console.warn(`⚠️ Failed to fetch reel metadata (${res.status})`);
           return;
         }
         const data = await res.json();
@@ -225,7 +217,8 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
           }
         }
       } catch (e) {
-        // Silently ignore fetch errors
+        // Silently ignore network errors - polling will retry
+        console.debug('Network poll skipped:', e);
       }
     };
 
@@ -287,23 +280,9 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
         setComments(merged);
         setCommentCount(merged.length);
         console.log(`✅ Loaded ${merged.length} comments for reel ${reelId}`);
-      } else if (response.status === 404) {
-        console.warn(`⚠️ Reel not found (404) - showing empty comments`);
-        // Mark reel missing so other interactions stop hitting backend
-        setReelMissing(true);
-        // Keep comments box open but show empty state (but still show any local comments)
-        try {
-          const localStore = JSON.parse(localStorage.getItem('localReelComments') || '{}');
-          const localForThis = Array.isArray(localStore[reelId]) ? localStore[reelId] : [];
-          setComments(localForThis);
-          setCommentCount(localForThis.length);
-        } catch {
-          setComments([]);
-          setCommentCount(0);
-        }
       } else {
-        console.warn(`⚠️ Failed to fetch comments: ${response.status}`);
-        // On other HTTP errors, still try to show local comments
+        // On error (404, 500, etc), gracefully show local comments only
+        console.warn(`⚠️ Failed to fetch comments (${response.status}) - showing local only`);
         try {
           const localStore = JSON.parse(localStorage.getItem('localReelComments') || '{}');
           const localForThis = Array.isArray(localStore[reelId]) ? localStore[reelId] : [];
@@ -316,7 +295,7 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
       }
     } catch (e) {
       console.error('❌ Error fetching comments:', e);
-      // On network error, just show empty comments, don't crash
+      // On network error, show local comments if available
       try {
         const localStore = JSON.parse(localStorage.getItem('localReelComments') || '{}');
         const localForThis = Array.isArray(localStore[reelId]) ? localStore[reelId] : [];
@@ -388,8 +367,6 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
   }, []);
 
   const handleLike = async () => {
-    // If backend reported this reel missing, or user is not authenticated,
-    // persist like locally so UI remains consistent across navigation.
     const token = localStorage.getItem('token');
     const newLiked = !userLiked;
 
@@ -397,13 +374,13 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
     setUserLiked(newLiked);
     setLikesCount((prev) => (newLiked ? prev + 1 : Math.max(0, prev - 1)));
 
-    if (!token || reelMissing) {
+    if (!token) {
+      // Not authenticated - save locally
       try {
         const localLikes = JSON.parse(localStorage.getItem('localReelLikes') || '{}');
         localLikes[reelId] = newLiked;
         localStorage.setItem('localReelLikes', JSON.stringify(localLikes));
       } catch {}
-      try { if (reelMissing) alert('⚠️ This reel appears deleted on the server. Like saved locally.'); else alert('✅ Like saved locally (login to sync).'); } catch {}
       return;
     }
 
@@ -417,26 +394,10 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
         },
         body: JSON.stringify({ liked: newLiked })
       });
-      if (!res.ok) {
-        if (res.status === 404) {
-          console.warn('⚠️ Reel not found - like not synced but kept local');
-          setReelMissing(true);
-          try { alert('⚠️ This reel appears deleted on the server. Like saved locally.'); } catch {}
-        } else {
-          console.error(`❌ Like failed: ${res.status}`);
-          // revert local UI and persist fallback locally
-          setUserLiked(!newLiked);
-          setLikesCount((prev) => (newLiked ? Math.max(0, prev - 1) : prev + 1));
-          try {
-            const localLikes = JSON.parse(localStorage.getItem('localReelLikes') || '{}');
-            localLikes[reelId] = newLiked;
-            localStorage.setItem('localReelLikes', JSON.stringify(localLikes));
-          } catch {}
-        }
-      } else {
+      if (res.ok) {
         const data = await res.json();
         if (typeof data.likes === 'number') setLikesCount(data.likes);
-        // remove any local-only like, since server has the canonical state
+        // Remove any local-only like since server has canonical state
         try {
           const localLikes = JSON.parse(localStorage.getItem('localReelLikes') || '{}');
           if (localLikes && localLikes[reelId]) {
@@ -444,22 +405,31 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
             localStorage.setItem('localReelLikes', JSON.stringify(localLikes));
           }
         } catch {}
+        console.log('✅ Like synced to server');
+      } else {
+        // On error, keep the like in local storage as fallback
+        console.warn(`⚠️ Like sync failed (${res.status}) - saved locally`);
+        try {
+          const localLikes = JSON.parse(localStorage.getItem('localReelLikes') || '{}');
+          localLikes[reelId] = newLiked;
+          localStorage.setItem('localReelLikes', JSON.stringify(localLikes));
+        } catch {}
       }
     } catch (e) {
       console.error('❌ Like error:', e);
-      // on network error persist locally
+      // Network error - persist locally
       try {
         const localLikes = JSON.parse(localStorage.getItem('localReelLikes') || '{}');
         localLikes[reelId] = newLiked;
         localStorage.setItem('localReelLikes', JSON.stringify(localLikes));
-        alert('⚠️ Network error — like saved locally');
       } catch {}
     }
   };
 
   const handleSaveReel = async () => {
-    if (reelMissing) {
-      // Save locally when reel is missing on server
+    const token = localStorage.getItem('token');
+    if (!token) {
+      // Save locally when not authenticated
       const userRaw = localStorage.getItem('user');
       const user = userRaw ? JSON.parse(userRaw) : {};
       const current = Array.from(new Set([...(user.savedReels || [])]));
@@ -607,34 +577,6 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
 
   return (
     <div className="h-full w-full snap-start relative bg-black overflow-hidden" ref={containerRef} style={{ scrollSnapAlign: 'start' }}>
-      {reelMissing && (
-        <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-50 px-4 py-2 bg-yellow-400 text-black rounded-full font-bold shadow-lg">
-          <div className="flex items-center gap-3">
-            <div>{lang === 'hi' ? 'रील हटाई जा चुकी है' : 'This reel may have been deleted'}</div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => {
-                  try {
-                    const userRaw = localStorage.getItem('user');
-                    const user = userRaw ? JSON.parse(userRaw) : {};
-                    if (user.savedReels) {
-                      user.savedReels = (user.savedReels || []).filter((id: string) => id !== reelId);
-                      localStorage.setItem('user', JSON.stringify(user));
-                    }
-                    alert('Removed from saved list');
-                  } catch (e) {
-                    console.error('Error removing saved reel:', e);
-                  }
-                }}
-                className="px-3 py-1 rounded bg-black text-white font-bold"
-              >
-                {lang === 'hi' ? 'हटाएँ' : 'Remove'}
-              </button>
-              <button onClick={() => { try { setShowComments(false); } catch {} }} className="px-3 py-1 rounded bg-black text-white font-bold">{lang === 'hi' ? 'बंद करें' : 'Close'}</button>
-            </div>
-          </div>
-        </div>
-      )}
       {/* Video Container */}
       <div className="h-full w-full flex items-center justify-center bg-black relative">
         {/* Video Element - WITH AUTOPLAY, LOOP, MUTED */}
