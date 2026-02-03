@@ -2,7 +2,7 @@
 import React, { useRef, useState } from 'react';
 import { translations } from '../translations';
 import { Service, Language } from '../types';
-import { Heart, MessageCircle, Bookmark, Gift, Play, X, ArrowLeft } from 'lucide-react';
+import { Heart, MessageCircle, Bookmark, Gift, Play, X, ArrowLeft, Volume2, VolumeX } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
@@ -346,11 +346,13 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
     };
   }, []);
 
-  // Handle unmute on user interaction
+  // Handle toggle mute/unmute on user interaction
   const handleUnmute = () => {
     if (videoRef.current) {
-      videoRef.current.muted = false;
-      setIsMuted(false);
+      const newMutedState = !isMuted;
+      videoRef.current.muted = newMutedState;
+      setIsMuted(newMutedState);
+      console.log(`🔊 Audio ${newMutedState ? 'muted' : 'unmuted'}`);
     }
   };
 
@@ -586,7 +588,7 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
             className="h-screen w-full object-cover"
             autoPlay={true}
             loop={true}
-            muted={true}
+            muted={isMuted}
             playsInline={true}
             onLoadedMetadata={() => {
               console.log('✅ Video loaded:', service.videoUrl);
@@ -603,6 +605,19 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
         ) : (
           <div className="text-white font-bold text-center">No video available</div>
         )}
+
+      {/* Mute/Unmute Button - Top Left */}
+      <button
+        onClick={handleUnmute}
+        className="absolute top-20 left-6 z-40 bg-black/60 hover:bg-black/80 text-white p-3 rounded-full transition-all active:scale-90 backdrop-blur-sm"
+        title={isMuted ? 'Unmute audio' : 'Audio is playing'}
+      >
+        {isMuted ? (
+          <VolumeX size={24} className="drop-shadow-lg" />
+        ) : (
+          <Volume2 size={24} className="drop-shadow-lg" />
+        )}
+      </button>
 
       {/* Right-side engagement vertical bar (icons + counts) - moved to bottom-right */}
       <div className="absolute right-6 bottom-[20vh] flex flex-col gap-8 items-center z-30 pointer-events-auto">
