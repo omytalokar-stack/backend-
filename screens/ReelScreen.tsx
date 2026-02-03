@@ -152,6 +152,7 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
   const [loadingComments, setLoadingComments] = useState(false);
   const [postingComment, setPostingComment] = useState(false);
   const [isMuted, setIsMuted] = useState(globalIsMuted); // Initialize with global state
+  const [isPlaying, setIsPlaying] = useState(true); // Manual play/pause state - default: auto-play
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const reelId = (service as any)._id || service.id;
@@ -312,29 +313,40 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
     }
   };
 
-  // Use Intersection Observer to auto-play when 50%+ visible
+  // AGGRESSIVE: Use 80% visibility threshold + Hard Stop for off-screen reels
   React.useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
-          // At least 50% visible
+        console.log(`👀 Reel visibility: ${Math.round(entry.intersectionRatio * 100)}%`);
+        
+        // ONLY play if 80%+ visible AND not manually paused
+        if (entry.isIntersecting && entry.intersectionRatio >= 0.8 && isPlaying) {
+          console.log('✅ 80%+ visible + user wants to play → AUTO-PLAY');
           try {
             if (videoRef.current) {
-              videoRef.current.muted = true;
-              videoRef.current.play().catch(() => {});
+              videoRef.current.muted = globalIsMuted;
+              videoRef.current.play().catch(err => {
+                console.warn('⚠️ Autoplay blocked:', err);
+              });
             }
-          } catch {}
-        } else {
-          // Less than 50% visible or out of view
+          } catch (e) {
+            console.error('❌ Play error:', e);
+          }
+        } else if (!entry.isIntersecting || entry.intersectionRatio < 0.8) {
+          // HARD STOP: Less than 80% visible → KILL audio immediately
+          console.log('🛑 <80% visible or out of view → HARD STOP');
           try {
             if (videoRef.current) {
               videoRef.current.pause();
               videoRef.current.currentTime = 0;
+              console.log(`💀 Killed reel audio at ${Math.round(entry.intersectionRatio * 100)}%`);
             }
-          } catch {}
+          } catch (e) {
+            console.error('❌ Stop error:', e);
+          }
         }
       },
-      { threshold: [0.5] } // Trigger when 50% is visible
+      { threshold: [0.2, 0.5, 0.8, 1.0] } // Monitor all thresholds for aggressive control
     );
 
     if (containerRef.current) {
@@ -346,7 +358,34 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
         observer.unobserve(containerRef.current);
       }
     };
-  }, []);
+  }, [isPlaying, globalIsMuted]);
+
+  // Manual Play/Pause Toggle on User Click
+  const handleVideoClick = () => {
+    if (videoRef.current) {
+      const newPlayState = !isPlaying;
+      setIsPlaying(newPlayState);
+      
+      if (newPlayState) {
+        // User clicked to play
+        videoRef.current.muted = globalIsMuted;
+        videoRef.current.play().catch(err => {
+          console.warn('⚠️ Manual play blocked:', err);
+        });
+        console.log('▶️ User clicked to PLAY');
+      } else {
+        // User clicked to pause
+        videoRef.current.pause();
+        console.log('⏸️ User clicked to PAUSE');
+      }
+    }
+  };
+
+  // Auto-start on first mount (default isPlaying=true for auto-play)
+  React.useEffect(() => {
+    setIsPlaying(true);
+    console.log('🎬 Reel mounted → Auto-play enabled');
+  }, [service.id]);
 
   // Handle toggle mute/unmute on user interaction
   const handleUnmute = () => {
@@ -600,14 +639,15 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
           <video
             ref={videoRef}
             src={service.videoUrl}
-            className="h-screen w-full object-contain"
+            className="h-screen w-full object-contain cursor-pointer"
             autoPlay={true}
             loop={true}
             muted={isMuted}
             playsInline={true}
+            onClick={handleVideoClick}
             onLoadedMetadata={() => {
               console.log('✅ Video loaded:', service.videoUrl);
-              if (videoRef.current) {
+              if (videoRef.current && isPlaying) {
                 videoRef.current.play().catch((e) => {
                   console.warn('⚠️ Autoplay blocked:', e);
                 });
