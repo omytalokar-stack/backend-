@@ -88,11 +88,27 @@ const ReelScreen: React.FC<Props> = ({ lang, services, onBook, onClose, onBack, 
         )}
       </div>
       
-      {validReels.map((service, idx) => (
-        <ErrorBoundary key={`${(service as any)._id || service.id}-${idx}`}>
-          <ReelItem service={service} lang={lang} t={t} onBook={onBook} getDisplayRate={getDisplayRate} />
-        </ErrorBoundary>
-      ))}
+      {validReels && validReels.length > 0 ? (
+        validReels.map((service, idx) => (
+          <ErrorBoundary key={`${(service as any)._id || service.id}-${idx}`}>
+            <ReelItem service={service} lang={lang} t={t} onBook={onBook} getDisplayRate={getDisplayRate} />
+          </ErrorBoundary>
+        ))
+      ) : (
+        <div className="h-screen w-full snap-start flex items-center justify-center bg-gradient-to-b from-pink-100 to-blue-100">
+          <div className="text-center px-6">
+            <div className="text-6xl mb-4">✨</div>
+            <h2 className="text-2xl font-black text-gray-800 mb-2">{lang === 'hi' ? 'कोई रील नहीं' : 'No Reels Yet'}</h2>
+            <p className="text-gray-600 mb-6">{lang === 'hi' ? 'कुछ समय बाद फिर से आएं' : 'Check back later for new content'}</p>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="px-6 py-2 bg-gradient-to-r from-pink-500 to-blue-500 text-white rounded-full font-bold active:scale-95"
+            >
+              {lang === 'hi' ? 'रीलोड करें' : 'Refresh'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

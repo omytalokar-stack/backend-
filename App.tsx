@@ -128,6 +128,17 @@ const App: React.FC = () => {
     const token = localStorage.getItem('token');
     const user = localStorage.getItem('user');
     
+    // Clean up old reel IDs from localStorage that might be from old test data
+    const userObj = user ? JSON.parse(user) : {};
+    if (userObj.savedReels && Array.isArray(userObj.savedReels)) {
+      // Keep only valid ObjectID format (24 hex chars or standard format)
+      userObj.savedReels = userObj.savedReels.filter((id: string) => 
+        typeof id === 'string' && id.length >= 20
+      );
+      localStorage.setItem('user', JSON.stringify(userObj));
+      console.log('🧹 Cleaned up stale reel IDs from localStorage');
+    }
+    
     if (token && user) {
       console.log('✅ Token found in localStorage, restoring session...');
       setIsLoggedIn(true);
@@ -301,13 +312,19 @@ const App: React.FC = () => {
         return r.json();
       })
       .then(data => {
-        if (Array.isArray(data)) {
+        if (Array.isArray(data) && data.length > 0) {
           console.log(`✅ Loaded ${data.length} reels from backend`);
-          setPublicReels(data);
+          // Filter out any invalid/empty reels
+          const validReels = data.filter(r => r && r._id && r.videoUrl);
+          setPublicReels(validReels);
+        } else {
+          console.warn('⚠️ No reels available from backend');
+          setPublicReels([]);
         }
       })
       .catch(err => {
-        console.warn('⚠️ Failed to fetch reels, using cached/mock data', err);
+        console.warn('⚠️ Failed to fetch reels, showing empty state', err);
+        setPublicReels([]); // Empty array, no mock data
       });
   }, []);
 
