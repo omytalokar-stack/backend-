@@ -101,7 +101,7 @@ const App: React.FC = () => {
   const [playedOpeningSound, setPlayedOpeningSound] = useState<boolean>(() => {
     return localStorage.getItem('hasPlayedOpeningSound') === 'true';
   });
-  const [globalIsMuted, setGlobalIsMuted] = useState<boolean>(true); // Global audio state for all reels
+  const [globalIsMuted, setGlobalIsMuted] = useState<boolean>(false); // Global audio state for all reels (default: unmuted)
 
   const t = translations[lang];
   const isAdminUser = useMemo(() => {

@@ -1,8 +1,8 @@
 
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { translations } from '../translations';
 import { Service, Language } from '../types';
-import { Heart, MessageCircle, Bookmark, Gift, Play, X, ArrowLeft, Volume2, VolumeX } from 'lucide-react';
+import { Heart, MessageCircle, Bookmark, Gift, Play, X, ArrowLeft } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
@@ -63,8 +63,77 @@ const ReelScreen: React.FC<Props> = ({ lang, services, onBook, onClose, onBack, 
     );
   }
 
+  const parentScrollRef = useRef<HTMLDivElement | null>(null);
+
+  // Stabilize snap: when scrolling stops, snap to nearest reel to avoid multi-skip
+  useEffect(() => {
+    const el = parentScrollRef.current;
+    if (!el) return;
+    el.style.scrollSnapType = 'y mandatory';
+    el.style.WebkitOverflowScrolling = 'touch';
+    el.style.touchAction = 'pan-y';
+    el.style.overscrollBehavior = 'contain';
+
+    let timeout: any = null;
+    const onScroll = () => {
+      if (timeout) clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        // find nearest child to top
+        const children = Array.from(el.querySelectorAll('[data-reel-index]')) as HTMLElement[];
+        if (children.length === 0) return;
+        let nearest: HTMLElement | null = null;
+        let nearestDist = Infinity;
+        children.forEach(child => {
+          const rect = child.getBoundingClientRect();
+          const dist = Math.abs(rect.top);
+          if (dist < nearestDist) {
+            nearestDist = dist;
+            nearest = child;
+          }
+        });
+        if (nearest) {
+          nearest.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+          // Ensure only the nearest reel's video is playing. Pause/unload all others to avoid background audio.
+          try {
+            const allVideos = Array.from(document.querySelectorAll('video')) as HTMLVideoElement[];
+            allVideos.forEach(v => {
+              // If the video belongs to the nearest reel, play it (restore src if needed)
+              if (nearest && nearest.contains(v)) {
+                try {
+                  if ((!v.src || v.src === window.location.href) && v.dataset.origSrc) v.src = v.dataset.origSrc;
+                  v.muted = globalIsMuted;
+                  v.play().catch(() => {});
+                } catch {}
+              } else {
+                try {
+                  v.pause();
+                  v.currentTime = 0;
+                  if (v.dataset && v.dataset.origSrc) {
+                    if (v.src) {
+                      v.src = '';
+                      try { v.load(); } catch {}
+                    }
+                  }
+                } catch {}
+              }
+            });
+          } catch (e) {
+            console.error('❌ Error enforcing single active video on scroll:', e);
+          }
+        }
+      }, 120);
+    };
+
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      el.removeEventListener('scroll', onScroll as any);
+      if (timeout) clearTimeout(timeout);
+    };
+  }, []);
+
   return (
-    <div className="h-full snap-y-mandatory overflow-y-scroll no-scrollbar bg-black relative" style={{ WebkitOverflowScrolling: 'touch', scrollSnapType: 'y mandatory' }}>
+    <div ref={parentScrollRef} className="h-full snap-y-mandatory overflow-y-scroll no-scrollbar bg-black relative" style={{ WebkitOverflowScrolling: 'touch', scrollSnapType: 'y mandatory' }}>
       {/* Navigation buttons */}
       <div className="fixed top-6 left-6 right-6 z-50 flex justify-between items-center pointer-events-none">
         {/* Back button */}
@@ -93,7 +162,7 @@ const ReelScreen: React.FC<Props> = ({ lang, services, onBook, onClose, onBack, 
       {validReels && validReels.length > 0 ? (
         validReels.map((service, idx) => (
           <ErrorBoundary key={`${(service as any)._id || service.id}-${idx}`}>
-            <ReelItem service={service} lang={lang} t={t} onBook={onBook} getDisplayRate={getDisplayRate} globalIsMuted={globalIsMuted} onMuteChange={onMuteChange} />
+            <ReelItem dataReelIndex={idx} service={service} lang={lang} t={t} onBook={onBook} getDisplayRate={getDisplayRate} globalIsMuted={globalIsMuted} />
           </ErrorBoundary>
         ))
       ) : (
@@ -144,14 +213,14 @@ class ErrorBoundary extends React.Component<any, { hasError: boolean }> {
   }
 }
 
-const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s: Service) => void; getDisplayRate?: (service: Service) => string; globalIsMuted?: boolean; onMuteChange?: (isMuted: boolean) => void }> = ({ service, lang, t, onBook, getDisplayRate, globalIsMuted = true, onMuteChange }) => {
+const ReelItem: React.FC<any> = ({ service, lang, t, onBook, getDisplayRate, globalIsMuted = false, dataReelIndex }) => {
   const [liked, setLiked] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [commentInput, setCommentInput] = useState('');
   const [comments, setComments] = useState<any[]>([]);
   const [loadingComments, setLoadingComments] = useState(false);
   const [postingComment, setPostingComment] = useState(false);
-  const [isMuted, setIsMuted] = useState(globalIsMuted); // Initialize with global state
+  // No per-item mute toggle UI — audio follows global state (App passes `globalIsMuted`).
   const [isPlaying, setIsPlaying] = useState(true); // Manual play/pause state - default: auto-play
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -315,38 +384,67 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
 
   // AGGRESSIVE: Use 80% visibility threshold + Hard Stop for off-screen reels
   React.useEffect(() => {
+    // Strict IntersectionObserver: if a reel is even 1% off-screen (i.e. intersectionRatio < 0.99), stop it.
     const observer = new IntersectionObserver(
       ([entry]) => {
-        console.log(`👀 Reel visibility: ${Math.round(entry.intersectionRatio * 100)}%`);
-        
-        // ONLY play if 80%+ visible AND not manually paused
-        if (entry.isIntersecting && entry.intersectionRatio >= 0.8 && isPlaying) {
-          console.log('✅ 80%+ visible + user wants to play → AUTO-PLAY');
+        const ratio = entry.intersectionRatio;
+        console.log(`👀 Reel visibility: ${Math.round(ratio * 100)}%`);
+
+        // If >=99% visible and not manually paused => play this reel and ensure others are stopped/unloaded
+        if (entry.isIntersecting && ratio >= 0.99 && isPlaying) {
           try {
+            // Restore src if it was unloaded
             if (videoRef.current) {
-              videoRef.current.muted = globalIsMuted;
-              videoRef.current.play().catch(err => {
-                console.warn('⚠️ Autoplay blocked:', err);
+              const v = videoRef.current;
+              if (!v.src || v.src === window.location.href) {
+                const orig = v.dataset.origSrc;
+                if (orig) v.src = orig;
+              }
+              v.muted = globalIsMuted;
+              // Pause and unload all other videos to prevent ghost audio
+              const others = Array.from(document.querySelectorAll('video')) as HTMLVideoElement[];
+              others.forEach(o => {
+                if (o !== v) {
+                  try {
+                    o.pause();
+                    o.currentTime = 0;
+                    if (o.dataset && o.dataset.origSrc) {
+                      // unload to free audio resources
+                      if (o.src) {
+                        o.src = '';
+                        try { o.load(); } catch {}
+                      }
+                    }
+                  } catch {}
+                }
               });
+
+              v.play().catch(err => console.warn('⚠️ Autoplay blocked:', err));
             }
           } catch (e) {
             console.error('❌ Play error:', e);
           }
-        } else if (!entry.isIntersecting || entry.intersectionRatio < 0.8) {
-          // HARD STOP: Less than 80% visible → KILL audio immediately
-          console.log('🛑 <80% visible or out of view → HARD STOP');
+        } else {
+          // Any time visibility goes below 99% → hard stop + unload this video's source to avoid background audio
           try {
             if (videoRef.current) {
-              videoRef.current.pause();
-              videoRef.current.currentTime = 0;
-              console.log(`💀 Killed reel audio at ${Math.round(entry.intersectionRatio * 100)}%`);
+              const v = videoRef.current;
+              v.pause();
+              v.currentTime = 0;
+              // Unload source to be safe (store original in data attribute)
+              if (v.src && !v.dataset.origSrc) v.dataset.origSrc = v.src;
+              if (v.src) {
+                v.src = '';
+                try { v.load(); } catch {}
+              }
+              console.log(`💀 Killed/unloaded reel audio at ${Math.round(ratio * 100)}%`);
             }
           } catch (e) {
             console.error('❌ Stop error:', e);
           }
         }
       },
-      { threshold: [0.2, 0.5, 0.8, 1.0] } // Monitor all thresholds for aggressive control
+      { threshold: [0, 0.01, 0.5, 0.99, 1.0] }
     );
 
     if (containerRef.current) {
@@ -354,9 +452,8 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
     }
 
     return () => {
-      if (containerRef.current) {
-        observer.unobserve(containerRef.current);
-      }
+      if (containerRef.current) observer.unobserve(containerRef.current);
+      observer.disconnect();
     };
   }, [isPlaying, globalIsMuted]);
 
@@ -368,10 +465,15 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
       
       if (newPlayState) {
         // User clicked to play
-        videoRef.current.muted = globalIsMuted;
-        videoRef.current.play().catch(err => {
-          console.warn('⚠️ Manual play blocked:', err);
-        });
+        // restore src if unloaded
+        const v = videoRef.current;
+        if (v && (!v.src || v.src === window.location.href) && v.dataset.origSrc) v.src = v.dataset.origSrc;
+        if (videoRef.current) {
+          videoRef.current.muted = globalIsMuted;
+          videoRef.current.play().catch(err => {
+            console.warn('⚠️ Manual play blocked:', err);
+          });
+        }
         console.log('▶️ User clicked to PLAY');
       } else {
         // User clicked to pause
@@ -387,26 +489,13 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
     console.log('🎬 Reel mounted → Auto-play enabled');
   }, [service.id]);
 
-  // Handle toggle mute/unmute on user interaction
-  const handleUnmute = () => {
-    if (videoRef.current) {
-      const newMutedState = !isMuted;
-      videoRef.current.muted = newMutedState;
-      setIsMuted(newMutedState);
-      // Update global mute state so all other reels follow
-      if (onMuteChange) {
-        onMuteChange(newMutedState);
-      }
-      console.log(`🔊 Audio ${newMutedState ? 'muted' : 'unmuted'} (global state updated)`);
-    }
-  };
-
   // Sync with global mute state when it changes
   React.useEffect(() => {
     if (videoRef.current) {
-      videoRef.current.muted = globalIsMuted;
-      setIsMuted(globalIsMuted);
-      console.log(`🔊 Synced to global mute state: ${globalIsMuted ? 'muted' : 'unmuted'}`);
+      try {
+        // If video currently has a src, apply mute state
+        if (videoRef.current.src) videoRef.current.muted = globalIsMuted;
+      } catch {}
     }
   }, [globalIsMuted]);
 
@@ -631,7 +720,7 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
   };
 
   return (
-    <div className="h-full w-full snap-start relative bg-black overflow-hidden" ref={containerRef} style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}>
+    <div data-reel-index={dataReelIndex} className="h-full w-full snap-start relative bg-black overflow-hidden" ref={containerRef} style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}>
       {/* Video Container */}
       <div className="h-full w-full flex items-center justify-center bg-black relative">
         {/* Video Element - WITH AUTOPLAY, LOOP, MUTED - SMART ORIENTATION WITH CONTAIN */}
@@ -642,7 +731,7 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
             className="h-screen w-full object-contain cursor-pointer"
             autoPlay={true}
             loop={true}
-            muted={isMuted}
+            muted={globalIsMuted}
             playsInline={true}
             onClick={handleVideoClick}
             onLoadedMetadata={() => {
@@ -661,18 +750,7 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
           <div className="text-white font-bold text-center">No video available</div>
         )}
 
-      {/* Mute/Unmute Button - Top Left */}
-      <button
-        onClick={handleUnmute}
-        className="absolute top-20 left-6 z-40 bg-black/60 hover:bg-black/80 text-white p-3 rounded-full transition-all active:scale-90 backdrop-blur-sm"
-        title={isMuted ? 'Unmute audio' : 'Audio is playing'}
-      >
-        {isMuted ? (
-          <VolumeX size={24} className="drop-shadow-lg" />
-        ) : (
-          <Volume2 size={24} className="drop-shadow-lg" />
-        )}
-      </button>
+      {/* Mute/Unmute button intentionally removed — global audio is controlled by app state and manual pause only. */}
 
       {/* Right-side engagement vertical bar (icons + counts) - moved to bottom-right */}
       <div className="absolute right-6 bottom-[20vh] flex flex-col gap-8 items-center z-30 pointer-events-auto">
