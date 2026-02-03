@@ -13,9 +13,11 @@ interface Props {
   onClose?: () => void;
   onBack?: () => void;
   getDisplayRate?: (service: Service) => string;
+  globalIsMuted?: boolean; // Global mute state from App
+  onMuteChange?: (isMuted: boolean) => void; // Callback to update global state
 }
 
-const ReelScreen: React.FC<Props> = ({ lang, services, onBook, onClose, onBack, getDisplayRate }) => {
+const ReelScreen: React.FC<Props> = ({ lang, services, onBook, onClose, onBack, getDisplayRate, globalIsMuted = true, onMuteChange }) => {
   const t = translations[lang];
   
   // Check for sessionStorage reels (from saved reels click)
@@ -91,7 +93,7 @@ const ReelScreen: React.FC<Props> = ({ lang, services, onBook, onClose, onBack, 
       {validReels && validReels.length > 0 ? (
         validReels.map((service, idx) => (
           <ErrorBoundary key={`${(service as any)._id || service.id}-${idx}`}>
-            <ReelItem service={service} lang={lang} t={t} onBook={onBook} getDisplayRate={getDisplayRate} />
+            <ReelItem service={service} lang={lang} t={t} onBook={onBook} getDisplayRate={getDisplayRate} globalIsMuted={globalIsMuted} onMuteChange={onMuteChange} />
           </ErrorBoundary>
         ))
       ) : (
@@ -142,14 +144,14 @@ class ErrorBoundary extends React.Component<any, { hasError: boolean }> {
   }
 }
 
-const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s: Service) => void; getDisplayRate?: (service: Service) => string }> = ({ service, lang, t, onBook, getDisplayRate }) => {
+const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s: Service) => void; getDisplayRate?: (service: Service) => string; globalIsMuted?: boolean; onMuteChange?: (isMuted: boolean) => void }> = ({ service, lang, t, onBook, getDisplayRate, globalIsMuted = true, onMuteChange }) => {
   const [liked, setLiked] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [commentInput, setCommentInput] = useState('');
   const [comments, setComments] = useState<any[]>([]);
   const [loadingComments, setLoadingComments] = useState(false);
   const [postingComment, setPostingComment] = useState(false);
-  const [isMuted, setIsMuted] = useState(true);
+  const [isMuted, setIsMuted] = useState(globalIsMuted); // Initialize with global state
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const reelId = (service as any)._id || service.id;
@@ -352,9 +354,22 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
       const newMutedState = !isMuted;
       videoRef.current.muted = newMutedState;
       setIsMuted(newMutedState);
-      console.log(`🔊 Audio ${newMutedState ? 'muted' : 'unmuted'}`);
+      // Update global mute state so all other reels follow
+      if (onMuteChange) {
+        onMuteChange(newMutedState);
+      }
+      console.log(`🔊 Audio ${newMutedState ? 'muted' : 'unmuted'} (global state updated)`);
     }
   };
+
+  // Sync with global mute state when it changes
+  React.useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.muted = globalIsMuted;
+      setIsMuted(globalIsMuted);
+      console.log(`🔊 Synced to global mute state: ${globalIsMuted ? 'muted' : 'unmuted'}`);
+    }
+  }, [globalIsMuted]);
 
   // Cleanup on unmount
   React.useEffect(() => {
@@ -580,12 +595,12 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
     <div className="h-full w-full snap-start relative bg-black overflow-hidden" ref={containerRef} style={{ scrollSnapAlign: 'start' }}>
       {/* Video Container */}
       <div className="h-full w-full flex items-center justify-center bg-black relative">
-        {/* Video Element - WITH AUTOPLAY, LOOP, MUTED */}
+        {/* Video Element - WITH AUTOPLAY, LOOP, MUTED - SMART ORIENTATION WITH CONTAIN */}
         {service.videoUrl ? (
           <video
             ref={videoRef}
             src={service.videoUrl}
-            className="h-screen w-full object-cover"
+            className="h-screen w-full object-contain"
             autoPlay={true}
             loop={true}
             muted={isMuted}

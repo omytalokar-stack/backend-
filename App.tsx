@@ -100,6 +100,7 @@ const App: React.FC = () => {
   const [playedOpeningSound, setPlayedOpeningSound] = useState<boolean>(() => {
     return localStorage.getItem('hasPlayedOpeningSound') === 'true';
   });
+  const [globalIsMuted, setGlobalIsMuted] = useState<boolean>(true); // Global audio state for all reels
 
   const t = translations[lang];
   const isAdminUser = useMemo(() => {
@@ -389,6 +390,16 @@ const App: React.FC = () => {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [adminSidebarOpen]);
+
+  // Fisher-Yates Shuffle Algorithm to randomize array order
+  const fisherYatesShuffle = <T,>(array: T[]): T[] => {
+    const arr = [...array]; // Create a copy to avoid mutating original
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]]; // Swap elements
+    }
+    return arr;
+  };
 
   const parsePrice = (str: string) => {
     const num = parseInt(str.replace(/[^\d]/g, ''), 10);
@@ -943,9 +954,12 @@ const App: React.FC = () => {
             reelServices = JSON.parse(stored);
             sessionStorage.removeItem('reelServices'); // clear after use
           } else {
+            // Shuffle public reels using Fisher-Yates algorithm for randomized order
+            const shuffledReels = fisherYatesShuffle(publicReels || []);
+            console.log('🎬 Shuffled reels - new random order for this session');
             // Map public reels with COMPLETE service data into Service objects
             // The backend now returns full service data in each reel
-            reelServices = (publicReels || []).map(r => {
+            reelServices = shuffledReels.map(r => {
               // Check if reel has complete service data from backend
               if (r.name && r.rate && r.time) {
                 // Reel already has complete service data - use it directly
@@ -983,7 +997,7 @@ const App: React.FC = () => {
               }
             });
           }
-          return <ReelScreen lang={lang} services={reelServices} onBook={handleServiceSelect} onBack={handleBackNavigation} onClose={() => setActiveTab('home')} getDisplayRate={getDisplayRate} />;
+          return <ReelScreen lang={lang} services={reelServices} onBook={handleServiceSelect} onBack={handleBackNavigation} onClose={() => setActiveTab('home')} getDisplayRate={getDisplayRate} globalIsMuted={globalIsMuted} onMuteChange={setGlobalIsMuted} />;
         }
       case 'trending':
         // Sort by click counts
