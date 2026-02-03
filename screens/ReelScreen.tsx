@@ -194,7 +194,7 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
         if (!mounted) return;
         if (typeof data.likes === 'number') setLikesCount(data.likes);
       } catch (e) {
-        console.error('❌ Error fetching reel metadata:', e);
+        // Silently ignore fetch errors
       }
     };
 
@@ -405,15 +405,15 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
         console.log('✅ Comment posted successfully');
         alert('✅ Comment Added!');
       } else if (response.status === 404) {
-        console.warn('⚠️ Reel not found - comment box stays open');
-        alert('⚠️ Service not available. Try again.');
+        console.warn('⚠️ Reel not found - silently ignored');
+        setCommentInput('');
       } else {
         const errData = await response.json().catch(() => ({}));
         alert(errData.error || 'Failed to post comment');
       }
     } catch (e) {
       console.error('❌ Error posting comment:', e);
-      alert('Network error. Try again.');
+      // Silently handle network errors
     } finally {
       setPostingComment(false);
     }
