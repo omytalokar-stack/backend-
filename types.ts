@@ -3,6 +3,9 @@ export type Language = 'en' | 'hi';
 
 export interface Service {
   id: string;
+  _id?: string;
+  // sometimes backend returns a serviceId mapping
+  serviceId?: string | { _id?: string };
   name: { en: string; hi?: string };
   features: { en: string; hi?: string };
   time: string;
@@ -14,6 +17,7 @@ export interface Service {
   offerOn?: boolean;
   likes?: number;
   views?: number;
+  description?: any;
 }
 
 export interface Order {

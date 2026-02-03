@@ -78,8 +78,8 @@ const App: React.FC = () => {
     const user = localStorage.getItem('user');
     return user ? JSON.parse(user).phone : '';
   });
-  const [activeTab, setActiveTab] = useState<'home' | 'reels' | 'trending' | 'profile'>('home');
-  const [view, setView] = useState<'main' | 'product' | 'my-orders' | 'booking' | 'offers' | 'notifications' | 'security' | 'settings' | 'admin' | 'saved'>('main');
+  const [activeTab, setActiveTab] = useState<string>('home');
+  const [view, setView] = useState<string>('main');
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [orders, setOrders] = useState<Order[]>([
     { id: '101', serviceName: 'Luxury Spa', status: 'Done', date: '2023-10-01', rate: '₹1500' },
@@ -636,7 +636,7 @@ const App: React.FC = () => {
 
     // Show profile setup if new user
     if (isNewUser) {
-      return <ProfileSetup lang={lang} phone={userPhone} onSetupComplete={handleProfileSetupComplete} />;
+      return <ProfileSetup lang={lang} onSetupComplete={handleProfileSetupComplete} />;
     }
 
     if (view === 'product' && selectedService) {
