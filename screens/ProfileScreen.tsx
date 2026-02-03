@@ -130,7 +130,7 @@ const ProfileScreen: React.FC<Props> = ({ lang, onLogout, onViewAllOffers, onNot
                 reader.onload = async () => {
                   const token = localStorage.getItem('token');
                   const body = JSON.stringify({ avatarUrl: reader.result });
-                  const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+                  const API_BASE = import.meta.env.VITE_API_URL || '';
                   if (token) {
                     await fetch(`${API_BASE}/api/auth/setup-profile`, {
                       method: 'POST',
