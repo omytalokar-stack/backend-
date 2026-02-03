@@ -149,11 +149,22 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
   const [comments, setComments] = useState<any[]>([]);
   const [loadingComments, setLoadingComments] = useState(false);
   const [postingComment, setPostingComment] = useState(false);
+  const [reelMissing, setReelMissing] = useState(false); // true when backend returns 404 for this reel
   const [isMuted, setIsMuted] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const reelId = (service as any)._id || service.id;
   const [userLiked, setUserLiked] = useState(false);
+  const [commentCount, setCommentCount] = useState<number>(() => {
+    try {
+      const base = (service as any).commentsCount || (service as any).comments?.length || 0;
+      const local = JSON.parse(localStorage.getItem('localReelComments') || '{}');
+      const localForThis = Array.isArray(local[reelId]) ? local[reelId].length : 0;
+      return base + localForThis;
+    } catch {
+      return (service as any).commentsCount || (service as any).comments?.length || 0;
+    }
+  });
 
   // Helper to safely localize fields that may be strings or { en, hi } objects
   const localizeField = (field: any) => {
@@ -170,7 +181,16 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
   };
 
   // Likes: show count and poll backend so admin changes reflect quickly
-  const [likesCount, setLikesCount] = useState<number>((service as any).likes || 0);
+  const [likesCount, setLikesCount] = useState<number>(() => {
+    try {
+      let base = (service as any).likes || 0;
+      const localLikes = JSON.parse(localStorage.getItem('localReelLikes') || '{}');
+      if (localLikes[reelId]) base += 1; // reflect local-only like in count
+      return base;
+    } catch {
+      return (service as any).likes || 0;
+    }
+  });
 
   React.useEffect(() => {
     let mounted = true;
@@ -186,13 +206,24 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
           if (res.status === 404) {
             console.warn(`⚠️ Reel ${reelId} not found (404) - stopping polls`);
             skip404 = true; // Stop all future polls
+            setReelMissing(true);
             if (iv) clearInterval(iv); // Clear the interval
           }
           return;
         }
         const data = await res.json();
         if (!mounted) return;
-        if (typeof data.likes === 'number') setLikesCount(data.likes);
+        if (typeof data.likes === 'number') {
+          // If user has a local-only like, ensure UI reflects it by adding 1
+          try {
+            const localLikes = JSON.parse(localStorage.getItem('localReelLikes') || '{}');
+            const localLiked = !!localLikes[reelId];
+            setLikesCount(localLiked ? data.likes + 1 : data.likes);
+            if (localLiked) setUserLiked(true);
+          } catch {
+            setLikesCount(data.likes);
+          }
+        }
       } catch (e) {
         // Silently ignore fetch errors
       }
@@ -202,6 +233,16 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
     fetchMeta();
     iv = setInterval(fetchMeta, 5000);
     return () => { mounted = false; if (iv) clearInterval(iv); };
+  }, [reelId]);
+
+  // Initialize userLiked from local storage (persist local-only likes across navigation)
+  React.useEffect(() => {
+    try {
+      const localLikes = JSON.parse(localStorage.getItem('localReelLikes') || '{}');
+      if (localLikes[reelId]) setUserLiked(true);
+    } catch {
+      // ignore
+    }
   }, [reelId]);
 
   // Fetch comments from backend when component mounts or when showComments changes
@@ -231,20 +272,60 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
         const safeComments = Array.isArray(data) ? data : [];
         // Ensure all comments belong to this reel
         const filtered = safeComments.filter((c: any) => c.reelId === reelId);
-        setComments(filtered);
-        console.log(`✅ Loaded ${filtered.length} comments for reel ${reelId}`);
+        // Merge with any locally-stored comments (unsynced)
+        let merged = filtered.slice();
+        try {
+          const localStore = JSON.parse(localStorage.getItem('localReelComments') || '{}');
+          const localForThis = Array.isArray(localStore[reelId]) ? localStore[reelId] : [];
+          // Prepend local comments that aren't duplicates
+          localForThis.forEach((lc: any) => {
+            if (!merged.find((m: any) => m._id === lc._id)) merged.unshift(lc);
+          });
+        } catch (e) {
+          // ignore local storage parse errors
+        }
+        setComments(merged);
+        setCommentCount(merged.length);
+        console.log(`✅ Loaded ${merged.length} comments for reel ${reelId}`);
       } else if (response.status === 404) {
         console.warn(`⚠️ Reel not found (404) - showing empty comments`);
-        // Keep comments box open but show empty state
-        setComments([]);
+        // Mark reel missing so other interactions stop hitting backend
+        setReelMissing(true);
+        // Keep comments box open but show empty state (but still show any local comments)
+        try {
+          const localStore = JSON.parse(localStorage.getItem('localReelComments') || '{}');
+          const localForThis = Array.isArray(localStore[reelId]) ? localStore[reelId] : [];
+          setComments(localForThis);
+          setCommentCount(localForThis.length);
+        } catch {
+          setComments([]);
+          setCommentCount(0);
+        }
       } else {
         console.warn(`⚠️ Failed to fetch comments: ${response.status}`);
-        setComments([]);
+        // On other HTTP errors, still try to show local comments
+        try {
+          const localStore = JSON.parse(localStorage.getItem('localReelComments') || '{}');
+          const localForThis = Array.isArray(localStore[reelId]) ? localStore[reelId] : [];
+          setComments(localForThis);
+          setCommentCount(localForThis.length);
+        } catch {
+          setComments([]);
+          setCommentCount(0);
+        }
       }
     } catch (e) {
       console.error('❌ Error fetching comments:', e);
       // On network error, just show empty comments, don't crash
-      setComments([]);
+      try {
+        const localStore = JSON.parse(localStorage.getItem('localReelComments') || '{}');
+        const localForThis = Array.isArray(localStore[reelId]) ? localStore[reelId] : [];
+        setComments(localForThis);
+        setCommentCount(localForThis.length);
+      } catch {
+        setComments([]);
+        setCommentCount(0);
+      }
     } finally {
       setLoadingComments(false);
     }
@@ -307,11 +388,26 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
   }, []);
 
   const handleLike = async () => {
+    // If backend reported this reel missing, or user is not authenticated,
+    // persist like locally so UI remains consistent across navigation.
+    const token = localStorage.getItem('token');
     const newLiked = !userLiked;
+
+    // Quick local update for snappy UI
     setUserLiked(newLiked);
     setLikesCount((prev) => (newLiked ? prev + 1 : Math.max(0, prev - 1)));
 
-    const token = localStorage.getItem('token');
+    if (!token || reelMissing) {
+      try {
+        const localLikes = JSON.parse(localStorage.getItem('localReelLikes') || '{}');
+        localLikes[reelId] = newLiked;
+        localStorage.setItem('localReelLikes', JSON.stringify(localLikes));
+      } catch {}
+      try { if (reelMissing) alert('⚠️ This reel appears deleted on the server. Like saved locally.'); else alert('✅ Like saved locally (login to sync).'); } catch {}
+      return;
+    }
+
+    // Authenticated - attempt to sync with backend
     try {
       const res = await fetch(`${API_BASE}/api/reels/${reelId}/like`, {
         method: 'POST',
@@ -324,21 +420,60 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
       if (!res.ok) {
         if (res.status === 404) {
           console.warn('⚠️ Reel not found - like not synced but kept local');
+          setReelMissing(true);
+          try { alert('⚠️ This reel appears deleted on the server. Like saved locally.'); } catch {}
         } else {
           console.error(`❌ Like failed: ${res.status}`);
+          // revert local UI and persist fallback locally
           setUserLiked(!newLiked);
           setLikesCount((prev) => (newLiked ? Math.max(0, prev - 1) : prev + 1));
+          try {
+            const localLikes = JSON.parse(localStorage.getItem('localReelLikes') || '{}');
+            localLikes[reelId] = newLiked;
+            localStorage.setItem('localReelLikes', JSON.stringify(localLikes));
+          } catch {}
         }
       } else {
         const data = await res.json();
         if (typeof data.likes === 'number') setLikesCount(data.likes);
+        // remove any local-only like, since server has the canonical state
+        try {
+          const localLikes = JSON.parse(localStorage.getItem('localReelLikes') || '{}');
+          if (localLikes && localLikes[reelId]) {
+            delete localLikes[reelId];
+            localStorage.setItem('localReelLikes', JSON.stringify(localLikes));
+          }
+        } catch {}
       }
     } catch (e) {
       console.error('❌ Like error:', e);
+      // on network error persist locally
+      try {
+        const localLikes = JSON.parse(localStorage.getItem('localReelLikes') || '{}');
+        localLikes[reelId] = newLiked;
+        localStorage.setItem('localReelLikes', JSON.stringify(localLikes));
+        alert('⚠️ Network error — like saved locally');
+      } catch {}
     }
   };
 
   const handleSaveReel = async () => {
+    if (reelMissing) {
+      // Save locally when reel is missing on server
+      const userRaw = localStorage.getItem('user');
+      const user = userRaw ? JSON.parse(userRaw) : {};
+      const current = Array.from(new Set([...(user.savedReels || [])]));
+      if (current.length >= 15 && !current.includes(reelId)) {
+        alert('Storage Full! 15 reels limit reached.');
+        return;
+      }
+      const set = new Set([...current, reelId]);
+      user.savedReels = Array.from(set);
+      localStorage.setItem('user', JSON.stringify(user));
+      try { alert('Saved locally — reel not present on server'); } catch (e) {}
+      return;
+    }
+
     const token = localStorage.getItem('token');
     try {
       if (token) {
@@ -387,6 +522,27 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
     const userRaw = localStorage.getItem('user');
     const user = userRaw ? JSON.parse(userRaw) : {};
     const userName = user.name || 'User';
+    // If user is not authenticated, save the comment locally so it survives navigation
+    if (!token) {
+      const localComment = {
+        _id: `local-${Date.now()}`,
+        reelId,
+        text,
+        userName,
+        createdAt: new Date().toISOString()
+      };
+      try {
+        const localStore = JSON.parse(localStorage.getItem('localReelComments') || '{}');
+        localStore[reelId] = Array.isArray(localStore[reelId]) ? [localComment, ...localStore[reelId]] : [localComment];
+        localStorage.setItem('localReelComments', JSON.stringify(localStore));
+      } catch {}
+      setComments(prev => [localComment, ...prev]);
+      setCommentInput('');
+      setCommentCount(c => c + 1);
+      setPostingComment(false);
+      try { alert('✅ Comment saved locally. Login to sync with server.'); } catch {}
+      return;
+    }
 
     try {
       const response = await fetch(`${API_BASE}/api/reels/${reelId}/comments`, {
@@ -402,18 +558,48 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
         const newComment = await response.json();
         setComments([newComment, ...comments]);
         setCommentInput('');
+        setCommentCount(c => c + 1);
         console.log('✅ Comment posted successfully');
         alert('✅ Comment Added!');
-      } else if (response.status === 404) {
-        console.warn('⚠️ Reel not found - silently ignored');
-        setCommentInput('');
       } else {
-        const errData = await response.json().catch(() => ({}));
-        alert(errData.error || 'Failed to post comment');
+        // Fallback: save locally for 404 or other errors so user doesn't lose input
+        console.warn('⚠️ Failed to post comment; saving locally');
+        const localComment = {
+          _id: `local-${Date.now()}`,
+          reelId,
+          text,
+          userName,
+          createdAt: new Date().toISOString()
+        };
+        try {
+          const localStore = JSON.parse(localStorage.getItem('localReelComments') || '{}');
+          localStore[reelId] = Array.isArray(localStore[reelId]) ? [localComment, ...localStore[reelId]] : [localComment];
+          localStorage.setItem('localReelComments', JSON.stringify(localStore));
+        } catch {}
+        setComments(prev => [localComment, ...prev]);
+        setCommentInput('');
+        setCommentCount(c => c + 1);
+        try { alert('✅ Comment saved locally. It will sync when possible.'); } catch {}
       }
     } catch (e) {
       console.error('❌ Error posting comment:', e);
-      // Silently handle network errors
+      // Network error fallback: save locally
+      const localComment = {
+        _id: `local-${Date.now()}`,
+        reelId,
+        text,
+        userName,
+        createdAt: new Date().toISOString()
+      };
+      try {
+        const localStore = JSON.parse(localStorage.getItem('localReelComments') || '{}');
+        localStore[reelId] = Array.isArray(localStore[reelId]) ? [localComment, ...localStore[reelId]] : [localComment];
+        localStorage.setItem('localReelComments', JSON.stringify(localStore));
+      } catch {}
+      setComments(prev => [localComment, ...prev]);
+      setCommentInput('');
+      setCommentCount(c => c + 1);
+      try { alert('⚠️ Network error — comment saved locally'); } catch {}
     } finally {
       setPostingComment(false);
     }
@@ -421,6 +607,34 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
 
   return (
     <div className="h-full w-full snap-start relative bg-black overflow-hidden" ref={containerRef} style={{ scrollSnapAlign: 'start' }}>
+      {reelMissing && (
+        <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-50 px-4 py-2 bg-yellow-400 text-black rounded-full font-bold shadow-lg">
+          <div className="flex items-center gap-3">
+            <div>{lang === 'hi' ? 'रील हटाई जा चुकी है' : 'This reel may have been deleted'}</div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  try {
+                    const userRaw = localStorage.getItem('user');
+                    const user = userRaw ? JSON.parse(userRaw) : {};
+                    if (user.savedReels) {
+                      user.savedReels = (user.savedReels || []).filter((id: string) => id !== reelId);
+                      localStorage.setItem('user', JSON.stringify(user));
+                    }
+                    alert('Removed from saved list');
+                  } catch (e) {
+                    console.error('Error removing saved reel:', e);
+                  }
+                }}
+                className="px-3 py-1 rounded bg-black text-white font-bold"
+              >
+                {lang === 'hi' ? 'हटाएँ' : 'Remove'}
+              </button>
+              <button onClick={() => { try { setShowComments(false); } catch {} }} className="px-3 py-1 rounded bg-black text-white font-bold">{lang === 'hi' ? 'बंद करें' : 'Close'}</button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Video Container */}
       <div className="h-full w-full flex items-center justify-center bg-black relative">
         {/* Video Element - WITH AUTOPLAY, LOOP, MUTED */}
@@ -460,7 +674,7 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
 
         <button onClick={() => setShowComments(true)} className="flex flex-col items-center gap-2 group transition-transform active:scale-90">
           <MessageCircle size={28} className="text-white drop-shadow-lg group-hover:scale-110 transition-transform" />
-          <span className="text-sm font-extrabold text-white drop-shadow-sm">{comments.length}</span>
+          <span className="text-sm font-extrabold text-white drop-shadow-sm">{commentCount}</span>
         </button>
 
         <button onClick={handleSaveReel} className="flex flex-col items-center gap-2 group transition-transform active:scale-90">
@@ -505,7 +719,7 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
                 <div className="w-14 h-1.5 bg-gray-700 rounded-full mx-auto mb-4" />
 
                 <div className="flex items-center justify-between mb-4">
-                  <h4 className="font-black text-xl">Comments ({comments.length})</h4>
+                  <h4 className="font-black text-xl">Comments ({commentCount})</h4>
                   <button onClick={() => setShowComments(false)} className="px-4 py-1.5 bg-gray-700 hover:bg-gray-600 rounded-full text-sm font-bold transition-colors">Close</button>
                 </div>
 
