@@ -234,16 +234,16 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
         setComments(filtered);
         console.log(`✅ Loaded ${filtered.length} comments for reel ${reelId}`);
       } else if (response.status === 404) {
-        console.warn(`⚠️ Reel not found (404) - This reel may have been deleted`);
+        console.warn(`⚠️ Reel not found (404) - showing empty comments`);
+        // Keep comments box open but show empty state
         setComments([]);
-        // Auto-close comments sheet on 404
-        setShowComments(false);
       } else {
         console.warn(`⚠️ Failed to fetch comments: ${response.status}`);
         setComments([]);
       }
     } catch (e) {
       console.error('❌ Error fetching comments:', e);
+      // On network error, just show empty comments, don't crash
       setComments([]);
     } finally {
       setLoadingComments(false);
@@ -496,32 +496,33 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
 
       {/* Comments Bottom Sheet (clean solid, NO BLUR) */}
       {showComments && (
-        <>
-          <div className="fixed inset-0 bg-black/50 z-30" onClick={() => setShowComments(false)} />
-          <div className="fixed inset-x-0 bottom-0 z-40 flex items-end justify-center">
-            <div className="w-full max-w-3xl h-[60vh] bg-gray-900 border-t border-gray-700 rounded-t-3xl p-5 text-white shadow-2xl transform transition-transform">
-              {/* drag handle */}
-              <div className="w-14 h-1.5 bg-gray-700 rounded-full mx-auto mb-4" />
+        <ErrorBoundary>
+          <>
+            <div className="fixed inset-0 bg-black/50 z-30" onClick={() => setShowComments(false)} />
+            <div className="fixed inset-x-0 bottom-0 z-40 flex items-end justify-center">
+              <div className="w-full max-w-3xl h-[60vh] bg-gray-900 border-t border-gray-700 rounded-t-3xl p-5 text-white shadow-2xl transform transition-transform">
+                {/* drag handle */}
+                <div className="w-14 h-1.5 bg-gray-700 rounded-full mx-auto mb-4" />
 
-              <div className="flex items-center justify-between mb-4">
-                <h4 className="font-black text-xl">Comments ({comments.length})</h4>
-                <button onClick={() => setShowComments(false)} className="px-4 py-1.5 bg-gray-700 hover:bg-gray-600 rounded-full text-sm font-bold transition-colors">Close</button>
-              </div>
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="font-black text-xl">Comments ({comments.length})</h4>
+                  <button onClick={() => setShowComments(false)} className="px-4 py-1.5 bg-gray-700 hover:bg-gray-600 rounded-full text-sm font-bold transition-colors">Close</button>
+                </div>
 
-              <div className="h-[48vh] overflow-y-auto pb-24 space-y-3 pr-2">
-                {loadingComments ? (
-                  <div className="flex flex-col items-center justify-center h-full">
-                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-pink-500 border-r-2 border-yellow-500 mb-4"></div>
-                    <p className="text-white/60 text-sm font-bold">Loading comments...</p>
-                  </div>
-                ) : comments.length === 0 ? (
-                  <p className="text-white/60 text-sm font-bold text-center py-8">✨ No comments yet. Be the first!</p>
-                ) : (
-                  comments.map((c) => (
-                    <CommentRow key={c._id || c.createdAt || Math.random()} c={c} />
-                  ))
-                )}
-              </div>
+                <div className="h-[48vh] overflow-y-auto pb-24 space-y-3 pr-2">
+                  {loadingComments ? (
+                    <div className="flex flex-col items-center justify-center h-full">
+                      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-pink-500 border-r-2 border-yellow-500 mb-4"></div>
+                      <p className="text-white/60 text-sm font-bold">Loading comments...</p>
+                    </div>
+                  ) : comments.length === 0 ? (
+                    <p className="text-white/60 text-sm font-bold text-center py-8">✨ No comments yet. Be the first!</p>
+                  ) : (
+                    comments.map((c) => (
+                      <CommentRow key={c._id || c.createdAt || Math.random()} c={c} />
+                    ))
+                  )}
+                </div>
 
               {/* Input bar - SOLID STYLING, NO BLUR */}
               <div className="absolute left-0 right-0 bottom-0 max-w-3xl mx-auto px-5 py-4 bg-gray-900">
@@ -545,7 +546,8 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
               </div>
             </div>
           </div>
-        </>
+          </>
+        </ErrorBoundary>
       )}
 
       {/* CommentRow component (inline) */}
