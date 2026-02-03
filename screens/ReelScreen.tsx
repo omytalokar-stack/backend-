@@ -329,7 +329,7 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
           },
-          body: JSON.stringify({ reelId: service.id })
+          body: JSON.stringify({ reelId: reelId })
         });
         const data = await res.json();
         if (!res.ok) {
@@ -347,11 +347,11 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
         const userRaw = localStorage.getItem('user');
         const user = userRaw ? JSON.parse(userRaw) : {};
         const current = Array.from(new Set([...(user.savedReels || [])]));
-        if (current.length >= 15 && !current.includes(service.id)) {
+        if (current.length >= 15 && !current.includes(reelId)) {
           alert('Storage Full! 15 reels limit reached.');
           return;
         }
-        const set = new Set([...current, service.id]);
+        const set = new Set([...current, reelId]);
         user.savedReels = Array.from(set);
         localStorage.setItem('user', JSON.stringify(user));
       }
