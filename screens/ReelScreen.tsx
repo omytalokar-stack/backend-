@@ -132,6 +132,7 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
   const [commentInput, setCommentInput] = useState('');
   const [comments, setComments] = useState<any[]>([]);
   const [loadingComments, setLoadingComments] = useState(false);
+  const [postingComment, setPostingComment] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -160,12 +161,17 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
     const fetchMeta = async () => {
       try {
         const res = await fetch(`${API_BASE}/api/reels/${reelId}`);
-        if (!res.ok) return;
+        if (!res.ok) {
+          if (res.status === 404) {
+            console.warn(`⚠️ Reel ${reelId} not found (404) - may be deleted`);
+          }
+          return;
+        }
         const data = await res.json();
         if (!mounted) return;
         if (typeof data.likes === 'number') setLikesCount(data.likes);
       } catch (e) {
-        // ignore
+        console.error('❌ Error fetching reel metadata:', e);
       }
     };
 
@@ -204,6 +210,11 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
         const filtered = safeComments.filter((c: any) => c.reelId === reelId);
         setComments(filtered);
         console.log(`✅ Loaded ${filtered.length} comments for reel ${reelId}`);
+      } else if (response.status === 404) {
+        console.warn(`⚠️ Reel not found (404) - This reel may have been deleted`);
+        setComments([]);
+        // Auto-close comments sheet on 404
+        setShowComments(false);
       } else {
         console.warn(`⚠️ Failed to fetch comments: ${response.status}`);
         setComments([]);
@@ -345,6 +356,7 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
     const text = commentInput.trim();
     if (!text) return;
 
+    setPostingComment(true);
     const token = localStorage.getItem('token');
     const userRaw = localStorage.getItem('user');
     const user = userRaw ? JSON.parse(userRaw) : {};
@@ -365,12 +377,22 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
         setComments([newComment, ...comments]);
         setCommentInput('');
         console.log('✅ Comment posted successfully');
+        // Show success message to user
+        alert('✅ Comment Added Successfully!');
+      } else if (response.status === 404) {
+        console.error('❌ Reel not found (404) - This reel may have been deleted');
+        alert('⚠️ This reel is no longer available. Skipping to next...');
+        // Skip to next reel
+        setShowComments(false);
       } else {
-        alert('Failed to post comment');
+        const errData = await response.json().catch(() => ({}));
+        alert(errData.error || 'Failed to post comment');
       }
     } catch (e) {
       console.error('❌ Error posting comment:', e);
-      alert('Error posting comment');
+      alert('Network error posting comment. Please try again.');
+    } finally {
+      setPostingComment(false);
     }
   };
 
@@ -465,9 +487,12 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
 
               <div className="h-[48vh] overflow-y-auto pb-24 space-y-3 pr-2">
                 {loadingComments ? (
-                  <p className="text-white/60 text-sm font-bold">Loading comments...</p>
+                  <div className="flex flex-col items-center justify-center h-full">
+                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-pink-500 border-r-2 border-yellow-500 mb-4"></div>
+                    <p className="text-white/60 text-sm font-bold">Loading comments...</p>
+                  </div>
                 ) : comments.length === 0 ? (
-                  <p className="text-white/60 text-sm font-bold">No comments yet. Be the first!</p>
+                  <p className="text-white/60 text-sm font-bold text-center py-8">✨ No comments yet. Be the first!</p>
                 ) : (
                   comments.map((c) => (
                     <CommentRow key={c._id || c.createdAt || Math.random()} c={c} />
@@ -487,10 +512,12 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
                     onChange={(e) => setCommentInput(e.target.value)}
                     placeholder="Add a comment..."
                     className="flex-1 bg-transparent outline-none px-2 text-white placeholder-white/50"
-                    disabled={loadingComments}
-                    onKeyDown={(e) => { if (e.key === 'Enter') handleAddComment(); }}
+                    disabled={loadingComments || postingComment}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && !postingComment) handleAddComment(); }}
                   />
-                  <button onClick={handleAddComment} disabled={loadingComments || !commentInput.trim()} className="px-4 py-2 bg-gradient-to-r from-[#FF3CAC] to-[#FFD166] rounded-full font-extrabold text-white hover:shadow-lg disabled:opacity-50 transition-all flex-shrink-0">Send</button>
+                  <button onClick={handleAddComment} disabled={loadingComments || postingComment || !commentInput.trim()} className="px-4 py-2 bg-gradient-to-r from-[#FF3CAC] to-[#FFD166] rounded-full font-extrabold text-white hover:shadow-lg disabled:opacity-50 transition-all flex-shrink-0">
+                    {postingComment ? '⏳' : '✓'}
+                  </button>
                 </div>
               </div>
             </div>

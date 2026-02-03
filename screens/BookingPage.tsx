@@ -109,6 +109,10 @@ const BookingPage: React.FC<Props> = ({ service, lang, onConfirm, getDisplayRate
       .then(r => {
         if (!r.ok) {
           console.error(`❌ Slot fetch failed: ${r.status} ${r.statusText}`);
+          if (r.status === 404) {
+            console.warn(`⚠️ Service ${id} not found (404) - may be deleted`);
+            throw new Error('Service not found');
+          }
           throw new Error(`${r.status}`);
         }
         return r.json();

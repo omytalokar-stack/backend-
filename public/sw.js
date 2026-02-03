@@ -40,7 +40,9 @@ self.addEventListener('activate', (event) => {
       keys.map(k => k !== CACHE_NAME ? caches.delete(k) : Promise.resolve())
     ))
   );
+  // Claim clients to ensure new SW controls all pages
   self.clients.claim();
+  console.log('✅ Service Worker activated and claiming clients');
 });
 
 self.addEventListener('fetch', (event) => {

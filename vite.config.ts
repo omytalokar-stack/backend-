@@ -5,6 +5,17 @@ import react from '@vitejs/plugin-react';
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     return {
+      build: {
+        outDir: 'dist',
+        rollupOptions: {
+          output: {
+            // Add hash to ensure cache busting on every deploy
+            entryFileNames: 'assets/index.[hash].js',
+            chunkFileNames: 'assets/[name].[hash].js',
+            assetFileNames: 'assets/[name].[hash][extname]'
+          }
+        }
+      },
       server: {
         port: 3000,
         host: '0.0.0.0',
@@ -13,7 +24,8 @@ export default defineConfig(({ mode }) => {
         hmr: false,
         headers: {
           "Cross-Origin-Resource-Policy": "cross-origin",
-          "Access-Control-Allow-Origin": "*"
+          "Access-Control-Allow-Origin": "*",
+          "Cache-Control": "no-cache, no-store, must-revalidate"
         }
       },
       plugins: [react()],
