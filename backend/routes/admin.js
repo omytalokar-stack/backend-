@@ -7,6 +7,7 @@ const Booking = require('../models/Booking');
 const User = require('../models/User');
 const Reel = require('../models/Reel');
 const Notification = require('../models/Notification');
+const Holiday = require('../models/Holiday');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -297,6 +298,71 @@ router.get('/reels', authenticateToken, ensureAdmin, async (req, res) => {
     res.json(safe);
   } catch (e) {
     res.status(500).json({ error: 'Failed to fetch reels' });
+  }
+});
+
+// Holidays: GET list or check by date
+router.get('/holidays', authenticateToken, ensureAdmin, async (req, res) => {
+  try {
+    const { date } = req.query;
+    if (date) {
+      const h = await Holiday.findOne({ date: String(date) });
+      if (!h) return res.json([]);
+      return res.json(h);
+    }
+    const list = await Holiday.find().sort({ date: 1 });
+    res.json(list || []);
+  } catch (err) {
+    console.error('❌ Holidays fetch error:', err && err.message ? err.message : err);
+    res.status(500).json({ error: 'Failed to fetch holidays' });
+  }
+});
+
+// Holidays: Create a holiday (admin only)
+router.post('/holidays', authenticateToken, ensureAdmin, async (req, res) => {
+  try {
+    const { date, note } = req.body;
+    if (!date) return res.status(400).json({ error: 'date (YYYY-MM-DD) is required' });
+    // Normalize date string
+    const d = String(date).slice(0, 10);
+    const existing = await Holiday.findOne({ date: d });
+    if (existing) return res.status(409).json({ error: 'Holiday already exists' });
+    const h = await Holiday.create({ date: d, note: note || '' });
+    console.log('✅ Holiday added:', d);
+    res.json(h);
+  } catch (err) {
+    console.error('❌ Failed to add holiday:', err && err.message ? err.message : err);
+    res.status(500).json({ error: 'Failed to add holiday' });
+  }
+});
+
+// Holidays: Delete by id or by date query
+router.delete('/holidays/:id', authenticateToken, ensureAdmin, async (req, res) => {
+  try {
+    const id = req.params.id;
+    const deleted = await Holiday.findByIdAndDelete(id);
+    if (!deleted) return res.status(404).json({ error: 'Holiday not found' });
+    console.log('🗑️ Holiday deleted:', deleted.date);
+    res.json({ deleted: true });
+  } catch (err) {
+    console.error('❌ Failed to delete holiday:', err && err.message ? err.message : err);
+    res.status(500).json({ error: 'Failed to delete holiday' });
+  }
+});
+
+// Allow delete by date query too
+router.delete('/holidays', authenticateToken, ensureAdmin, async (req, res) => {
+  try {
+    const { date } = req.query;
+    if (!date) return res.status(400).json({ error: 'date query parameter required' });
+    const d = String(date).slice(0,10);
+    const deleted = await Holiday.findOneAndDelete({ date: d });
+    if (!deleted) return res.status(404).json({ error: 'Holiday not found' });
+    console.log('🗑️ Holiday deleted by date:', d);
+    res.json({ deleted: true });
+  } catch (err) {
+    console.error('❌ Failed to delete holiday by date:', err && err.message ? err.message : err);
+    res.status(500).json({ error: 'Failed to delete holiday' });
   }
 });
 
