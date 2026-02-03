@@ -322,16 +322,19 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
         body: JSON.stringify({ liked: newLiked })
       });
       if (!res.ok) {
-        setUserLiked(!newLiked);
-        setLikesCount((prev) => (newLiked ? Math.max(0, prev - 1) : prev + 1));
+        if (res.status === 404) {
+          console.warn('⚠️ Reel not found - like not synced but kept local');
+        } else {
+          console.error(`❌ Like failed: ${res.status}`);
+          setUserLiked(!newLiked);
+          setLikesCount((prev) => (newLiked ? Math.max(0, prev - 1) : prev + 1));
+        }
       } else {
         const data = await res.json();
         if (typeof data.likes === 'number') setLikesCount(data.likes);
       }
     } catch (e) {
       console.error('❌ Like error:', e);
-      setUserLiked(!newLiked);
-      setLikesCount((prev) => (newLiked ? Math.max(0, prev - 1) : prev + 1));
     }
   };
 
@@ -400,20 +403,17 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
         setComments([newComment, ...comments]);
         setCommentInput('');
         console.log('✅ Comment posted successfully');
-        // Show success message to user
-        alert('✅ Comment Added Successfully!');
+        alert('✅ Comment Added!');
       } else if (response.status === 404) {
-        console.error('❌ Reel not found (404) - This reel may have been deleted');
-        alert('⚠️ This reel is no longer available. Skipping to next...');
-        // Skip to next reel
-        setShowComments(false);
+        console.warn('⚠️ Reel not found - comment box stays open');
+        alert('⚠️ Service not available. Try again.');
       } else {
         const errData = await response.json().catch(() => ({}));
         alert(errData.error || 'Failed to post comment');
       }
     } catch (e) {
       console.error('❌ Error posting comment:', e);
-      alert('Network error posting comment. Please try again.');
+      alert('Network error. Try again.');
     } finally {
       setPostingComment(false);
     }
