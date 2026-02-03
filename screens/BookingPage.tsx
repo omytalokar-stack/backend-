@@ -26,6 +26,8 @@ const BookingPage: React.FC<Props> = ({ service, lang, onConfirm, getDisplayRate
   });
 
   const [slots, setSlots] = useState<{ label: string; startHour: number; endHour: number }[]>([]);
+  const [isHoliday, setIsHoliday] = useState<boolean>(false);
+  const [holidayNote, setHolidayNote] = useState<string>('');
   const [fullService, setFullService] = useState<Service>(service);
   const [loadingService, setLoadingService] = useState(false);
 
@@ -91,61 +93,36 @@ const BookingPage: React.FC<Props> = ({ service, lang, onConfirm, getDisplayRate
     const token = localStorage.getItem('token');
     const date = formData.date; // use selected date
     const id = (fullService as any)._id || fullService.id;
-    
+
     console.log(`📅 Date selected: ${date}, Service ID: ${id}`);
-    
-    if (!token || !id) {
-      console.warn('⚠️ No token or service id, using fallback slots');
-      // Fallback: 1 PM to 7 PM slots (13:00-19:00)
-      setSlots([
-        { label: '1:00 PM - 2:00 PM', startHour: 13, endHour: 14 },
-        { label: '2:00 PM - 3:00 PM', startHour: 14, endHour: 15 },
-        { label: '3:00 PM - 4:00 PM', startHour: 15, endHour: 16 },
-        { label: '4:00 PM - 5:00 PM', startHour: 16, endHour: 17 },
-        { label: '5:00 PM - 6:00 PM', startHour: 17, endHour: 18 },
-        { label: '6:00 PM - 7:00 PM', startHour: 18, endHour: 19 }
-      ]);
-      return;
-    }
-    
-    const url = `${API_BASE}/api/bookings/available?serviceId=${id}&date=${date}`;
-    console.log(`🔗 Fetching slots from: ${url}`);
-    
-    fetch(url, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-      .then(r => {
-        if (!r.ok) {
-          console.error(`❌ Slot fetch failed: ${r.status} ${r.statusText}`);
-          if (r.status === 404) {
-            console.warn(`⚠️ Service ${id} not found (404) - may be deleted`);
-            throw new Error('Service not found');
+
+    // First check holidays for this date
+    (async () => {
+      setIsHoliday(false);
+      setHolidayNote('');
+      try {
+        if (!date) return;
+        const hRes = await fetch(`${API_BASE}/api/admin/holidays?date=${encodeURIComponent(date)}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+        if (hRes.ok) {
+          const hd = await hRes.json();
+          // Accept either array or single object
+          if ((Array.isArray(hd) && hd.length > 0) || (hd && (hd.isHoliday || hd.date))) {
+            setIsHoliday(true);
+            if (Array.isArray(hd) && hd[0] && hd[0].note) setHolidayNote(hd[0].note);
+            else if (hd.note) setHolidayNote(hd.note);
+            setSlots([]);
+            return; // Skip slot fetching when holiday
           }
-          throw new Error(`${r.status}`);
         }
-        return r.json();
-      })
-      .then(d => {
-        console.log('✅ Slots fetched:', d.slots?.length || 0, 'available');
-        const fetchedSlots = (d.slots || []).filter((s: any) => s && typeof s.startHour === 'number');
-        
-        if (fetchedSlots.length === 0) {
-          console.warn('⚠️ No slots returned, using all 1-7 PM slots as available');
-          setSlots([
-            { label: '1:00 PM - 2:00 PM', startHour: 13, endHour: 14 },
-            { label: '2:00 PM - 3:00 PM', startHour: 14, endHour: 15 },
-            { label: '3:00 PM - 4:00 PM', startHour: 15, endHour: 16 },
-            { label: '4:00 PM - 5:00 PM', startHour: 16, endHour: 17 },
-            { label: '5:00 PM - 6:00 PM', startHour: 17, endHour: 18 },
-            { label: '6:00 PM - 7:00 PM', startHour: 18, endHour: 19 }
-          ]);
-        } else {
-          setSlots(fetchedSlots);
-        }
-      })
-      .catch(err => {
-        console.error('❌ Slot fetch error:', err);
-        // Fallback to all 1-7 PM slots
+      } catch (e) {
+        console.warn('Holiday check failed, proceeding to fetch slots', e);
+      }
+
+      if (!token || !id) {
+        console.warn('⚠️ No token or service id, using fallback slots');
+        // Fallback: 1 PM to 7 PM slots (13:00-19:00)
         setSlots([
           { label: '1:00 PM - 2:00 PM', startHour: 13, endHour: 14 },
           { label: '2:00 PM - 3:00 PM', startHour: 14, endHour: 15 },
@@ -154,7 +131,57 @@ const BookingPage: React.FC<Props> = ({ service, lang, onConfirm, getDisplayRate
           { label: '5:00 PM - 6:00 PM', startHour: 17, endHour: 18 },
           { label: '6:00 PM - 7:00 PM', startHour: 18, endHour: 19 }
         ]);
-      });
+        return;
+      }
+
+      const url = `${API_BASE}/api/bookings/available?serviceId=${id}&date=${date}`;
+      console.log(`🔗 Fetching slots from: ${url}`);
+
+      fetch(url, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then(r => {
+          if (!r.ok) {
+            console.error(`❌ Slot fetch failed: ${r.status} ${r.statusText}`);
+            if (r.status === 404) {
+              console.warn(`⚠️ Service ${id} not found (404) - may be deleted`);
+              throw new Error('Service not found');
+            }
+            throw new Error(`${r.status}`);
+          }
+          return r.json();
+        })
+        .then(d => {
+          console.log('✅ Slots fetched:', d.slots?.length || 0, 'available');
+          const fetchedSlots = (d.slots || []).filter((s: any) => s && typeof s.startHour === 'number');
+
+          if (fetchedSlots.length === 0) {
+            console.warn('⚠️ No slots returned, using all 1-7 PM slots as available');
+            setSlots([
+              { label: '1:00 PM - 2:00 PM', startHour: 13, endHour: 14 },
+              { label: '2:00 PM - 3:00 PM', startHour: 14, endHour: 15 },
+              { label: '3:00 PM - 4:00 PM', startHour: 15, endHour: 16 },
+              { label: '4:00 PM - 5:00 PM', startHour: 16, endHour: 17 },
+              { label: '5:00 PM - 6:00 PM', startHour: 17, endHour: 18 },
+              { label: '6:00 PM - 7:00 PM', startHour: 18, endHour: 19 }
+            ]);
+          } else {
+            setSlots(fetchedSlots);
+          }
+        })
+        .catch(err => {
+          console.error('❌ Slot fetch error:', err);
+          // Fallback to all 1-7 PM slots
+          setSlots([
+            { label: '1:00 PM - 2:00 PM', startHour: 13, endHour: 14 },
+            { label: '2:00 PM - 3:00 PM', startHour: 14, endHour: 15 },
+            { label: '3:00 PM - 4:00 PM', startHour: 15, endHour: 16 },
+            { label: '4:00 PM - 5:00 PM', startHour: 16, endHour: 17 },
+            { label: '5:00 PM - 6:00 PM', startHour: 17, endHour: 18 },
+            { label: '6:00 PM - 7:00 PM', startHour: 18, endHour: 19 }
+          ]);
+        });
+    })();
   }, [fullService, formData.date]);
 
   return (
@@ -214,7 +241,12 @@ const BookingPage: React.FC<Props> = ({ service, lang, onConfirm, getDisplayRate
             <Calendar size={14} /> {t.timeSlot}
           </label>
           <div className="flex flex-wrap gap-3">
-              {(() => {
+            {isHoliday ? (
+              <div className="w-full text-center py-8 text-2xl font-black text-red-600 bg-red-50 rounded-lg">
+                This day is a Holiday{holidayNote ? ` — ${holidayNote}` : ''}
+              </div>
+            ) : (
+              (() => {
                 const todayStr = new Date().toISOString().slice(0,10);
                 const isToday = formData.date === todayStr;
                 const now = new Date();
@@ -230,35 +262,36 @@ const BookingPage: React.FC<Props> = ({ service, lang, onConfirm, getDisplayRate
                     setFormData({ ...formData, slot: '', startHour: 0, endHour: 0 });
                   }
                 }
-              return (
-                <>
-                  {isToday && filtered.length < slots.length && (
-                    <div className="w-full text-xs text-amber-600 bg-amber-50 p-2.5 rounded-[12px] font-semibold">
-                      ⏰ Past time slots are hidden for today. Only future slots are available.
-                    </div>
-                  )}
-                  {filtered.length === 0 ? (
-                    <div className="w-full text-center py-4 text-slate-500 text-sm font-semibold">
-                      No available slots for this date
-                    </div>
-                  ) : (
-                    filtered.map(s => (
-                      <button
-                        key={s.label}
-                        onClick={() => setFormData({...formData, slot: s.label, startHour: s.startHour, endHour: s.endHour})}
-                        className={`px-5 py-2.5 rounded-[30px] font-bold text-sm transition-all border-2 ${
-                          formData.slot === s.label 
-                            ? 'bg-[#FFB7C5] text-white border-[#FFB7C5] shadow-md scale-105' 
-                            : 'bg-white text-slate-600 border-slate-100 hover:border-pink-200'
-                        }`}
-                      >
-                        {s.label}
-                      </button>
-                    ))
-                  )}
-                </>
-              );
-            })()}
+                return (
+                  <>
+                    {isToday && filtered.length < slots.length && (
+                      <div className="w-full text-xs text-amber-600 bg-amber-50 p-2.5 rounded-[12px] font-semibold">
+                        ⏰ Past time slots are hidden for today. Only future slots are available.
+                      </div>
+                    )}
+                    {filtered.length === 0 ? (
+                      <div className="w-full text-center py-4 text-slate-500 text-sm font-semibold">
+                        No available slots for this date
+                      </div>
+                    ) : (
+                      filtered.map(s => (
+                        <button
+                          key={s.label}
+                          onClick={() => setFormData({...formData, slot: s.label, startHour: s.startHour, endHour: s.endHour})}
+                          className={`px-5 py-2.5 rounded-[30px] font-bold text-sm transition-all border-2 ${
+                            formData.slot === s.label 
+                              ? 'bg-[#FFB7C5] text-white border-[#FFB7C5] shadow-md scale-105' 
+                              : 'bg-white text-slate-600 border-slate-100 hover:border-pink-200'
+                          }`}
+                        >
+                          {s.label}
+                        </button>
+                      ))
+                    )}
+                  </>
+                );
+              })()
+            )}
           </div>
         </div>
 
@@ -292,10 +325,10 @@ const BookingPage: React.FC<Props> = ({ service, lang, onConfirm, getDisplayRate
 
         <button 
           onClick={() => onConfirm(formData)}
-          disabled={!formData.name || !formData.address || !formData.slot}
+          disabled={!formData.name || !formData.address || !formData.slot || isHoliday}
           className="w-full py-5 bg-[#FFB7C5] disabled:bg-slate-200 text-white font-black text-xl rounded-[30px] shadow-lg active:scale-95 transition-all mt-4"
         >
-          {t.bookNow}
+          {isHoliday ? 'Holiday' : t.bookNow}
         </button>
       </div>
     </div>

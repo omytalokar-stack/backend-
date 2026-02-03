@@ -64,7 +64,7 @@ const ReelScreen: React.FC<Props> = ({ lang, services, onBook, onClose, onBack, 
   }
 
   return (
-    <div className="h-full snap-y-mandatory scroll-smooth overflow-y-scroll no-scrollbar bg-black relative" style={{ scrollBehavior: 'smooth', scrollSnapType: 'y mandatory' }}>
+    <div className="h-full snap-y-mandatory overflow-y-scroll no-scrollbar bg-black relative" style={{ WebkitOverflowScrolling: 'touch', scrollSnapType: 'y mandatory' }}>
       {/* Navigation buttons */}
       <div className="fixed top-6 left-6 right-6 z-50 flex justify-between items-center pointer-events-none">
         {/* Back button */}
@@ -631,7 +631,7 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
   };
 
   return (
-    <div className="h-full w-full snap-start relative bg-black overflow-hidden" ref={containerRef} style={{ scrollSnapAlign: 'start' }}>
+    <div className="h-full w-full snap-start relative bg-black overflow-hidden" ref={containerRef} style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}>
       {/* Video Container */}
       <div className="h-full w-full flex items-center justify-center bg-black relative">
         {/* Video Element - WITH AUTOPLAY, LOOP, MUTED - SMART ORIENTATION WITH CONTAIN */}

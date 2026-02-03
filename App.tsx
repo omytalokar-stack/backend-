@@ -18,6 +18,7 @@ import ServiceManager from './src/admin/ServiceManager';
 import OrderManager from './src/admin/OrderManager';
 import UserManager from './src/admin/UserManager';
 import ReelsManager from './src/admin/ReelsManager';
+import HolidaysManager from './src/admin/HolidaysManager';
 import PushNotificationService from './src/pushNotifications';
 import { 
   Home as HomeIcon, 
@@ -85,7 +86,7 @@ const App: React.FC = () => {
     { id: '101', serviceName: 'Luxury Spa', status: 'Done', date: '2023-10-01', rate: '₹1500' },
     { id: '102', serviceName: 'House Cleaning', status: 'Pending', date: '2023-10-05', rate: '₹800' }
   ]);
-  const [adminTab, setAdminTab] = useState<'dashboard' | 'services' | 'reels' | 'orders' | 'users'>('dashboard');
+  const [adminTab, setAdminTab] = useState<'dashboard' | 'services' | 'reels' | 'orders' | 'users' | 'holidays'>('dashboard');
   const [adminShowServiceForm, setAdminShowServiceForm] = useState(false);
   const [adminShowReelForm, setAdminShowReelForm] = useState(false);
   const [adminSidebarOpen, setAdminSidebarOpen] = useState(false);
@@ -718,6 +719,17 @@ const App: React.FC = () => {
                 </button>
                 <button
                   type="button"
+                  onClick={() => setAdminTab('holidays')}
+                  className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-all ${
+                    adminTab === 'holidays'
+                      ? 'bg-[#FFB7C5] text-white shadow-md'
+                      : 'text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  📅 Holidays
+                </button>
+                <button
+                  type="button"
                   onClick={() => setAdminTab('orders')}
                   className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-all ${
                     adminTab === 'orders'
@@ -771,6 +783,9 @@ const App: React.FC = () => {
 
                 {/* Reels Tab */}
                 {adminTab === 'reels' && <ReelsManager showFormDefault={adminShowReelForm} />}
+
+                {/* Holidays Tab */}
+                {adminTab === 'holidays' && <HolidaysManager />}
 
                 {/* Orders Tab */}
                 {adminTab === 'orders' && <OrderManager />}
