@@ -158,12 +158,19 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
 
   React.useEffect(() => {
     let mounted = true;
+    let iv: NodeJS.Timeout | null = null;
+    let skip404 = false; // Flag to stop polling on 404
+    
     const fetchMeta = async () => {
+      if (skip404) return; // Skip if reel was already 404
+      
       try {
         const res = await fetch(`${API_BASE}/api/reels/${reelId}`);
         if (!res.ok) {
           if (res.status === 404) {
-            console.warn(`⚠️ Reel ${reelId} not found (404) - may be deleted`);
+            console.warn(`⚠️ Reel ${reelId} not found (404) - stopping polls`);
+            skip404 = true; // Stop all future polls
+            if (iv) clearInterval(iv); // Clear the interval
           }
           return;
         }
@@ -177,8 +184,8 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
 
     // Initial fetch + interval polling for admin-updated likes
     fetchMeta();
-    const iv = setInterval(fetchMeta, 5000);
-    return () => { mounted = false; clearInterval(iv); };
+    iv = setInterval(fetchMeta, 5000);
+    return () => { mounted = false; if (iv) clearInterval(iv); };
   }, [reelId]);
 
   // Fetch comments from backend when component mounts or when showComments changes

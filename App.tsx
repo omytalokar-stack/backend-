@@ -292,9 +292,23 @@ const App: React.FC = () => {
 
   // Fetch public reels for the reels view
   useEffect(() => {
-    fetch(`${API_BASE}/api/reels`).then(r => r.ok ? r.json() : Promise.reject()).then(data => {
-      if (Array.isArray(data)) setPublicReels(data);
-    }).catch(() => {});
+    fetch(`${API_BASE}/api/reels`)
+      .then(r => {
+        if (!r.ok) {
+          console.error(`❌ Failed to fetch reels: ${r.status}`);
+          return Promise.reject();
+        }
+        return r.json();
+      })
+      .then(data => {
+        if (Array.isArray(data)) {
+          console.log(`✅ Loaded ${data.length} reels from backend`);
+          setPublicReels(data);
+        }
+      })
+      .catch(err => {
+        console.warn('⚠️ Failed to fetch reels, using cached/mock data', err);
+      });
   }, []);
 
   // Load admin data when viewing admin panel
