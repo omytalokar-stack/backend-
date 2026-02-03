@@ -444,7 +444,6 @@ const ReelItem: React.FC<{ service: Service; lang: Language; t: any; onBook: (s:
       return;
     }
 
-    const token = localStorage.getItem('token');
     try {
       if (token) {
         const res = await fetch(`${API_BASE}/api/reels/save`, {
