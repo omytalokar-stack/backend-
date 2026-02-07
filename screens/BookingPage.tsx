@@ -8,12 +8,13 @@ const API_BASE = import.meta.env.VITE_API_URL || '';
 
 interface Props {
   service: Service;
+  serviceCart?: Service[];
   lang: Language;
   onConfirm: (order: Partial<Order>) => void;
   getDisplayRate?: (service: Service) => string;
 }
 
-const BookingPage: React.FC<Props> = ({ service, lang, onConfirm, getDisplayRate }) => {
+const BookingPage: React.FC<Props> = ({ service, serviceCart, lang, onConfirm, getDisplayRate }) => {
   const t = translations[lang];
   const [formData, setFormData] = useState({
     name: '',
@@ -30,6 +31,25 @@ const BookingPage: React.FC<Props> = ({ service, lang, onConfirm, getDisplayRate
   const [holidayNote, setHolidayNote] = useState<string>('');
   const [fullService, setFullService] = useState<Service>(service);
   const [loadingService, setLoadingService] = useState(false);
+
+  // Helper function to calculate the price for a single service
+  const getPriceForService = (svc: Service): number => {
+    if (!svc) return 0;
+    const base = typeof svc.baseRate === 'number' ? svc.baseRate : parseInt(svc.rate.replace(/[^\d]/g, ''), 10) || 0;
+    const userRaw = localStorage.getItem('user');
+    const user = userRaw ? JSON.parse(userRaw) : {};
+    const isFirstTime = (typeof user.orderCount === 'number' ? user.orderCount === 0 : true);
+    const discounted = svc.offerOn || (user.isOfferActive && !user.isOfferUsed && isFirstTime);
+    return discounted ? Math.round(base * 0.8) : base;
+  };
+
+  // Calculate grand total from all services in cart, or single service
+  const calculateGrandTotal = (): number => {
+    if (serviceCart && serviceCart.length > 0) {
+      return serviceCart.reduce((sum, svc) => sum + getPriceForService(svc), 0);
+    }
+    return getPriceForService(fullService);
+  };
 
   // Ensure we have complete service data (especially important for Reel bookings)
   useEffect(() => {
@@ -295,31 +315,33 @@ const BookingPage: React.FC<Props> = ({ service, lang, onConfirm, getDisplayRate
           </div>
         </div>
 
+        {/* Order Summary - Show all services in cart */}
+        {serviceCart && serviceCart.length > 0 && (
+          <div className="p-6 bg-gradient-to-br from-purple-50 to-pink-50 rounded-[30px] space-y-4">
+            <h3 className="text-sm font-black uppercase text-slate-600">Order Summary</h3>
+            <div className="space-y-3">
+              {serviceCart.map((svc, idx) => (
+                <div key={idx} className="flex justify-between items-center pb-3 border-b border-slate-200">
+                  <div className="flex-1">
+                    <p className="font-bold text-slate-700">{svc.name[lang]}</p>
+                    <p className="text-xs text-slate-500">{svc.time || '1 hour'}</p>
+                  </div>
+                  <span className="font-black text-pink-500">₹{getPriceForService(svc)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Summary */}
         <div className="p-6 bg-slate-50 rounded-[30px] space-y-3">
           <div className="flex justify-between text-slate-500 font-bold uppercase text-[10px]">
-            <span>Service Total</span>
-            <span>{getDisplayRate ? getDisplayRate(fullService) : (() => {
-              const base = typeof fullService.baseRate === 'number' ? fullService.baseRate : parseInt(fullService.rate.replace(/[^\d]/g, ''), 10);
-              const userRaw = localStorage.getItem('user');
-              const user = userRaw ? JSON.parse(userRaw) : {};
-              const isFirstTime = (typeof user.orderCount === 'number' ? user.orderCount === 0 : true);
-              const discounted = fullService.offerOn || (user.isOfferActive && !user.isOfferUsed && isFirstTime);
-              const price = discounted ? Math.round(base * 0.8) : base;
-              return `₹${price}`;
-            })()}</span>
+            <span>{serviceCart && serviceCart.length > 1 ? `Services (${serviceCart.length})` : 'Service'} Total</span>
+            <span>₹{calculateGrandTotal()}</span>
           </div>
           <div className="flex justify-between text-slate-800 font-black text-lg">
             <span>Grand Total</span>
-            <span className="text-pink-500">{getDisplayRate ? getDisplayRate(fullService) : (() => {
-              const base = typeof fullService.baseRate === 'number' ? fullService.baseRate : parseInt(fullService.rate.replace(/[^\d]/g, ''), 10);
-              const userRaw = localStorage.getItem('user');
-              const user = userRaw ? JSON.parse(userRaw) : {};
-              const isFirstTime = (typeof user.orderCount === 'number' ? user.orderCount === 0 : true);
-              const discounted = fullService.offerOn || (user.isOfferActive && !user.isOfferUsed && isFirstTime);
-              const price = discounted ? Math.round(base * 0.8) : base;
-              return `₹${price}`;
-            })()}</span>
+            <span className="text-pink-500">₹{calculateGrandTotal()}</span>
           </div>
         </div>
 
@@ -336,3 +358,4 @@ const BookingPage: React.FC<Props> = ({ service, lang, onConfirm, getDisplayRate
 };
 
 export default BookingPage;
+

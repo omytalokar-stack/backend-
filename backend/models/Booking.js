@@ -11,6 +11,13 @@ const bookingSchema = new mongoose.Schema({
   address: { type: String, default: null },
   totalPrice: { type: Number, default: 0 },
   totalDuration: { type: String, default: null },
+  // Array of services for bulk/cart bookings
+  services: [{
+    serviceId: { type: String },
+    serviceName: { type: String, default: '' },
+    price: { type: Number, default: 0 },
+    duration: { type: String, default: '' }
+  }],
 }, { timestamps: true });
 
 // Index to speed up overlapping-slot queries (non-unique; overlap logic handled in app)

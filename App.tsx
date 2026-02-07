@@ -614,6 +614,22 @@ const App: React.FC = () => {
     const serviceId = (selectedService as any)._id || selectedService.id;
     const date = newOrder.date || new Date().toISOString().slice(0, 10);
 
+    // Build services array from serviceCart or use single service
+    const servicesArray = serviceCart.length > 0 ? serviceCart.map(s => ({
+      serviceId: (s as any)._id || s.id,
+      serviceName: s.name,
+      price: parseInt(s.rate.replace(/[^\d]/g, ''), 10) || 0,
+      duration: s.time || '1 hour'
+    })) : [{
+      serviceId,
+      serviceName: selectedService.name,
+      price: parseInt(selectedService.rate.replace(/[^\d]/g, ''), 10) || 0,
+      duration: selectedService.time || '1 hour'
+    }];
+
+    // Calculate total price from all services
+    const totalPrice = servicesArray.reduce((sum, s) => sum + (s.price || 0), 0);
+
     const bookingPayload = {
       serviceId,
       date,
@@ -621,12 +637,13 @@ const App: React.FC = () => {
       endHour: newOrder.endHour,
       customerName: (newOrder as any).name || null,
       address: (newOrder as any).address || null,
-      totalPrice: 0,
+      totalPrice: totalPrice,
       totalDuration: selectedService?.time || null,
+      servicesArray // Include full services array
     };
 
     console.log('🔄 Sending booking request to:', `${API_BASE}/api/bookings`);
-    console.log('📦 Payload:', bookingPayload);
+    console.log('📦 Payload with services:', bookingPayload);
 
     // Send booking to backend
     fetch(`${API_BASE}/api/bookings`, {
@@ -755,7 +772,7 @@ const App: React.FC = () => {
       return <MyOrdersScreen orders={orders} lang={lang} />;
     }
     if (view === 'booking' && selectedService) {
-      return <BookingPage service={selectedService} lang={lang} onConfirm={handleBookingConfirm} getDisplayRate={getDisplayRate} />;
+      return <BookingPage service={selectedService} serviceCart={serviceCart} lang={lang} onConfirm={handleBookingConfirm} getDisplayRate={getDisplayRate} />;
     }
     if (view === 'admin') {
       if (!isAdminUser) {

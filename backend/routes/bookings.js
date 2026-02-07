@@ -128,7 +128,7 @@ router.get('/available', authenticateToken, async (req, res) => {
 router.post('/', authenticateToken, async (req, res) => {
   try {
     console.log('📥 Creating booking:', { userId: req.user.userId, body: req.body });
-    const { serviceId, date, startHour, endHour, customerName, address, totalPrice, totalDuration } = req.body;
+    const { serviceId, date, startHour, endHour, customerName, address, totalPrice, totalDuration, servicesArray } = req.body;
     if (!serviceId || !date || startHour == null || endHour == null) {
       return res.status(400).json({ error: 'Missing fields: serviceId, date, startHour, endHour required' });
     }
@@ -164,8 +164,8 @@ router.post('/', authenticateToken, async (req, res) => {
       });
     }
 
-    // Safe to create booking with optional customerName and address
-    const b = await Booking.create({ 
+    // Safe to create booking with optional customerName, address, and services array
+    const bookingData = { 
       userId: req.user.userId, 
       serviceId, 
       date, 
@@ -175,10 +175,13 @@ router.post('/', authenticateToken, async (req, res) => {
       customerName: customerName || null,
       address: address || null,
       totalPrice: totalPrice || 0,
-      totalDuration: totalDuration || null
-    });
+      totalDuration: totalDuration || null,
+      services: servicesArray || [] // Store array of selected services with their details
+    };
+
+    const b = await Booking.create(bookingData);
     
-    console.log('✅ Booking created successfully:', { bookingId: b._id, slot: `${startHour}-${endHour}`, customerName });
+    console.log('✅ Booking created successfully:', { bookingId: b._id, slot: `${startHour}-${endHour}`, customerName, servicesCount: servicesArray?.length || 1 });
     // Create admin notifications and try to push to subscribed admins
     try {
       // Create a readable message
