@@ -37,7 +37,7 @@ router.get('/user', authenticateToken, async (req, res) => {
 
 router.get('/available', authenticateToken, async (req, res) => {
   try {
-    const { serviceId, date } = req.query;
+    const { serviceId, date, durationMinutes: queryDurationMinutes } = req.query;
     if (!serviceId || !date) return res.status(400).json({ error: 'serviceId and date required' });
     
     // Try to find service by ObjectId or by string match
@@ -47,8 +47,9 @@ router.get('/available', authenticateToken, async (req, res) => {
     }
     if (!service) return res.status(404).json({ error: 'Service not found' });
     
-    // Calculate exact duration in minutes - support both full hours and minutes like 50, 75, 90 etc
-    const durationMinutes = service.durationMinutes || 60;
+    // Use duration from query params (for multi-service cart) or fall back to service duration
+    let durationMinutes = queryDurationMinutes ? parseInt(queryDurationMinutes, 10) : (service.durationMinutes || 60);
+    if (isNaN(durationMinutes) || durationMinutes < 1) durationMinutes = 60; // Safety check
     
     // For a single worker setup we must consider bookings across all services
     const bookings = await Booking.find({ date });

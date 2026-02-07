@@ -51,6 +51,89 @@ const BookingPage: React.FC<Props> = ({ service, serviceCart, lang, onConfirm, g
     return getPriceForService(fullService);
   };
 
+  // Helper: Parse duration string to minutes
+  const parseDurationToMinutes = (duration: string | undefined): number => {
+    if (!duration) return 60; // default 1 hour
+    const str = duration.toLowerCase();
+    
+    // Handle "150 min" format
+    const minMatch = str.match(/(\d+(?:\.\d+)?)\s*m(?:in)?/);
+    if (minMatch) return parseInt(minMatch[1], 10);
+    
+    // Handle "2.5 hours" or "2 hours 30 min" format
+    const hourMatch = str.match(/(\d+(?:\.\d+)?)\s*h(?:our)?/);
+    if (hourMatch) {
+      const hours = parseFloat(hourMatch[1]);
+      const minPart = str.match(/(\d+)\s*m(?:in)?/);
+      const mins = minPart ? parseInt(minPart[1], 10) : 0;
+      return Math.round(hours * 60 + mins);
+    }
+    
+    return 60; // default fallback
+  };
+
+  // Helper: Convert minutes to hours and minutes display
+  const formatDuration = (minutes: number): string => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    if (hours === 0) return `${mins} min`;
+    if (mins === 0) return `${hours} hour${hours > 1 ? 's' : ''}`;
+    return `${hours}h ${mins}m`;
+  };
+
+  // Calculate total duration from all services in cart
+  const calculateTotalDuration = (): number => {
+    if (serviceCart && serviceCart.length > 0) {
+      return serviceCart.reduce((sum, svc) => sum + parseDurationToMinutes(svc.time), 0);
+    }
+    return parseDurationToMinutes(fullService?.time);
+  };
+
+  // Helper: Generate time slots with dynamic duration and buffer time
+  const generateDynamicSlots = (availableSlots: any[], durationMinutes: number, bufferMinutes: number = 20): any[] => {
+    const BUFFER = bufferMinutes; // 20 min buffer by default
+    const durationHours = durationMinutes / 60;
+    
+    return availableSlots.map((slot: any) => {
+      const endHour = slot.startHour + Math.ceil(durationHours);
+      const endMinutes = (durationMinutes % 60);
+      
+      // Calculate actual end time with minutes
+      let actualEndHour = slot.startHour;
+      let actualEndMinutes = 0;
+      
+      let totalMinutes = (slot.startHour * 60) + durationMinutes;
+      actualEndHour = Math.floor(totalMinutes / 60);
+      actualEndMinutes = totalMinutes % 60;
+      
+      // Format times
+      const startFormatted = `${String(slot.startHour).padStart(2, '0')}:00`;
+      const endFormatted = actualEndMinutes === 0 
+        ? `${String(actualEndHour).padStart(2, '0')}:00`
+        : `${String(actualEndHour).padStart(2, '0')}:${String(actualEndMinutes).padStart(2, '0')}`;
+      
+      const startLabel = slot.startHour < 12 
+        ? `${slot.startHour % 12 || 12}:00 AM`
+        : slot.startHour === 12
+        ? '12:00 PM'
+        : `${slot.startHour - 12}:00 PM`;
+      
+      const endLabel = actualEndHour < 12
+        ? `${actualEndHour % 12 || 12}:${String(actualEndMinutes).padStart(2, '0')} AM`
+        : actualEndHour === 12
+        ? `12:${String(actualEndMinutes).padStart(2, '0')} PM`
+        : `${actualEndHour - 12}:${String(actualEndMinutes).padStart(2, '0')} PM`;
+
+      return {
+        label: `${startLabel} - ${endLabel}`,
+        startHour: slot.startHour,
+        endHour: actualEndHour,
+        endMinutes: actualEndMinutes,
+        originalEndHour: slot.startHour + Math.ceil(durationHours) // For conflict checking
+      };
+    });
+  };
+
   // Ensure we have complete service data (especially important for Reel bookings)
   useEffect(() => {
     if (!service) return;
@@ -142,19 +225,21 @@ const BookingPage: React.FC<Props> = ({ service, serviceCart, lang, onConfirm, g
 
       if (!token || !id) {
         console.warn('⚠️ No token or service id, using fallback slots');
-        // Fallback: 1 PM to 7 PM slots (13:00-19:00)
-        setSlots([
-          { label: '1:00 PM - 2:00 PM', startHour: 13, endHour: 14 },
-          { label: '2:00 PM - 3:00 PM', startHour: 14, endHour: 15 },
-          { label: '3:00 PM - 4:00 PM', startHour: 15, endHour: 16 },
-          { label: '4:00 PM - 5:00 PM', startHour: 16, endHour: 17 },
-          { label: '5:00 PM - 6:00 PM', startHour: 17, endHour: 18 },
-          { label: '6:00 PM - 7:00 PM', startHour: 18, endHour: 19 }
-        ]);
+        // Fallback: 1 PM to 7 PM slots (13:00-19:00) with dynamic duration
+        const totalDurationMin = calculateTotalDuration();
+        const baseSlots = [
+          { startHour: 13 },
+          { startHour: 14 },
+          { startHour: 15 },
+          { startHour: 16 },
+          { startHour: 17 },
+          { startHour: 18 }
+        ];
+        setSlots(generateDynamicSlots(baseSlots, totalDurationMin));
         return;
       }
 
-      const url = `${API_BASE}/api/bookings/available?serviceId=${id}&date=${date}`;
+      const url = `${API_BASE}/api/bookings/available?serviceId=${id}&date=${date}&durationMinutes=${calculateTotalDuration()}`;
       console.log(`🔗 Fetching slots from: ${url}`);
 
       fetch(url, {
@@ -174,35 +259,39 @@ const BookingPage: React.FC<Props> = ({ service, serviceCart, lang, onConfirm, g
         .then(d => {
           console.log('✅ Slots fetched:', d.slots?.length || 0, 'available');
           const fetchedSlots = (d.slots || []).filter((s: any) => s && typeof s.startHour === 'number');
+          const totalDurationMin = calculateTotalDuration();
 
           if (fetchedSlots.length === 0) {
             console.warn('⚠️ No slots returned, using all 1-7 PM slots as available');
-            setSlots([
-              { label: '1:00 PM - 2:00 PM', startHour: 13, endHour: 14 },
-              { label: '2:00 PM - 3:00 PM', startHour: 14, endHour: 15 },
-              { label: '3:00 PM - 4:00 PM', startHour: 15, endHour: 16 },
-              { label: '4:00 PM - 5:00 PM', startHour: 16, endHour: 17 },
-              { label: '5:00 PM - 6:00 PM', startHour: 17, endHour: 18 },
-              { label: '6:00 PM - 7:00 PM', startHour: 18, endHour: 19 }
-            ]);
+            const baseSlots = [
+              { startHour: 13 },
+              { startHour: 14 },
+              { startHour: 15 },
+              { startHour: 16 },
+              { startHour: 17 },
+              { startHour: 18 }
+            ];
+            setSlots(generateDynamicSlots(baseSlots, totalDurationMin));
           } else {
-            setSlots(fetchedSlots);
+            setSlots(generateDynamicSlots(fetchedSlots, totalDurationMin));
           }
         })
         .catch(err => {
           console.error('❌ Slot fetch error:', err);
           // Fallback to all 1-7 PM slots
-          setSlots([
-            { label: '1:00 PM - 2:00 PM', startHour: 13, endHour: 14 },
-            { label: '2:00 PM - 3:00 PM', startHour: 14, endHour: 15 },
-            { label: '3:00 PM - 4:00 PM', startHour: 15, endHour: 16 },
-            { label: '4:00 PM - 5:00 PM', startHour: 16, endHour: 17 },
-            { label: '5:00 PM - 6:00 PM', startHour: 17, endHour: 18 },
-            { label: '6:00 PM - 7:00 PM', startHour: 18, endHour: 19 }
-          ]);
+          const totalDurationMin = calculateTotalDuration();
+          const baseSlots = [
+            { startHour: 13 },
+            { startHour: 14 },
+            { startHour: 15 },
+            { startHour: 16 },
+            { startHour: 17 },
+            { startHour: 18 }
+          ];
+          setSlots(generateDynamicSlots(baseSlots, totalDurationMin));
         });
     })();
-  }, [fullService, formData.date]);
+  }, [fullService, formData.date, serviceCart]);
 
   return (
     <div className="p-6 space-y-8 animate-in slide-in-from-bottom-8 duration-300">
@@ -334,7 +423,13 @@ const BookingPage: React.FC<Props> = ({ service, serviceCart, lang, onConfirm, g
         )}
 
         {/* Summary */}
-        <div className="p-6 bg-slate-50 rounded-[30px] space-y-3">
+        <div className="p-6 bg-slate-50 rounded-[30px] space-y-4">
+          {/* Total Duration */}
+          <div className="flex justify-between items-center p-4 bg-blue-50 rounded-2xl">
+            <span className="text-sm font-bold text-slate-600">⏱️ Total Duration</span>
+            <span className="text-lg font-black text-blue-600">{formatDuration(calculateTotalDuration())}</span>
+          </div>
+
           <div className="flex justify-between text-slate-500 font-bold uppercase text-[10px]">
             <span>{serviceCart && serviceCart.length > 1 ? `Services (${serviceCart.length})` : 'Service'} Total</span>
             <span>₹{calculateGrandTotal()}</span>
