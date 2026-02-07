@@ -19,6 +19,7 @@ import OrderManager from './src/admin/OrderManager';
 import UserManager from './src/admin/UserManager';
 import ReelsManager from './src/admin/ReelsManager';
 import HolidaysManager from './src/admin/HolidaysManager';
+import UpdateAvailable from './src/UpdateAvailable';
 import PushNotificationService from './src/pushNotifications';
 import { 
   Home as HomeIcon, 
@@ -82,6 +83,7 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>('home');
   const [view, setView] = useState<string>('main');
   const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [serviceCart, setServiceCart] = useState<Service[]>([]); // Service cart for multi-booking
   const [orders, setOrders] = useState<Order[]>([
     { id: '101', serviceName: 'Luxury Spa', status: 'Done', date: '2023-10-01', rate: '₹1500' },
     { id: '102', serviceName: 'House Cleaning', status: 'Pending', date: '2023-10-05', rate: '₹800' }
@@ -102,6 +104,8 @@ const App: React.FC = () => {
     return localStorage.getItem('hasPlayedOpeningSound') === 'true';
   });
   const [globalIsMuted, setGlobalIsMuted] = useState<boolean>(false); // Global audio state for all reels (default: unmuted)
+  const [showUpdateAvailable, setShowUpdateAvailable] = useState<boolean>(false);
+  const [swRegistration, setSwRegistration] = useState<ServiceWorkerRegistration | null>(null);
 
   const t = translations[lang];
   const isAdminUser = useMemo(() => {
@@ -253,6 +257,23 @@ const App: React.FC = () => {
     };
   }, [activeTab, view, navigationHistory]);
 
+  // Listen for app update availability
+  useEffect(() => {
+    console.log('🔔 Setting up app update listener');
+    
+    const handleUpdateAvailable = (event: any) => {
+      console.log('🚀 Update available event received!', event.detail);
+      setSwRegistration(event.detail?.registration || null);
+      setShowUpdateAvailable(true);
+    };
+
+    window.addEventListener('app-update-available', handleUpdateAvailable);
+    
+    return () => {
+      window.removeEventListener('app-update-available', handleUpdateAvailable);
+    };
+  }, []);
+
   // Fetch services from database on app load
   useEffect(() => {
     console.log('📦 Fetching services from database...');
@@ -333,6 +354,47 @@ const App: React.FC = () => {
         });
       }
     }
+  }, [isLoggedIn]);
+
+  // Fetch user's bookings when logged in
+  useEffect(() => {
+    if (!isLoggedIn) {
+      setOrders([]);
+      return;
+    }
+
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    console.log('📥 Fetching user bookings...');
+    fetch(`${API_BASE}/api/bookings/user`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(r => {
+        if (!r.ok) {
+          console.error(`❌ Failed to fetch bookings: ${r.status}`);
+          throw new Error(`HTTP ${r.status}`);
+        }
+        return r.json();
+      })
+      .then(bookings => {
+        if (Array.isArray(bookings)) {
+          console.log(`✅ Loaded ${bookings.length} user bookings`);
+          // Convert backend bookings to Order format for UI
+          const orders: Order[] = bookings.map((b: any) => ({
+            id: b._id,
+            serviceName: b.serviceName || `Service ${b.serviceId}`,
+            status: b.status === 'Done' || b.status === 'completed' ? 'Done' : 'Pending',
+            date: b.date,
+            rate: b.totalPrice ? `₹${b.totalPrice}` : '₹0',
+          }));
+          setOrders(orders);
+        }
+      })
+      .catch(err => {
+        console.error('❌ Error fetching user bookings:', err);
+        setOrders([]);
+      });
   }, [isLoggedIn]);
 
   // Fetch public reels for the reels view
@@ -511,6 +573,37 @@ const App: React.FC = () => {
     setView('booking');
   };
 
+  const handleAddToCart = (service: Service) => {
+    console.log('🛒 Adding service to cart:', service.name[lang]);
+    setServiceCart([...serviceCart, service]);
+    alert(`✅ ${service.name[lang]} added to cart!`);
+    // Go back to home to show cart
+    setView('main');
+    setActiveTab('home');
+  };
+
+  const handleRemoveFromCart = (index: number) => {
+    console.log('🗑️ Removing service from cart at index:', index);
+    setServiceCart(serviceCart.filter((_, i) => i !== index));
+  };
+
+  const handleClearCart = () => {
+    console.log('🧹 Clearing cart');
+    setServiceCart([]);
+  };
+
+  const handleCheckoutCart = () => {
+    if (serviceCart.length === 0) {
+      alert('❌ Cart is empty!');
+      return;
+    }
+    
+    // For now, just proceed to booking with first service
+    // TODO: Implement bulk booking
+    setSelectedService(serviceCart[0]);
+    setView('booking');
+  };
+
   const handleBookingConfirm = (newOrder: Partial<Order>) => {
     const token = localStorage.getItem('token');
     if (!token || !selectedService) {
@@ -526,6 +619,10 @@ const App: React.FC = () => {
       date,
       startHour: newOrder.startHour,
       endHour: newOrder.endHour,
+      customerName: (newOrder as any).name || null,
+      address: (newOrder as any).address || null,
+      totalPrice: 0,
+      totalDuration: selectedService?.time || null,
     };
 
     console.log('🔄 Sending booking request to:', `${API_BASE}/api/bookings`);
@@ -652,7 +749,7 @@ const App: React.FC = () => {
     }
 
     if (view === 'product' && selectedService) {
-      return <ProductDetails service={selectedService} lang={lang} onBook={handleBookingStart} displayRate={getDisplayRate(selectedService)} />;
+      return <ProductDetails service={selectedService} lang={lang} onBook={handleBookingStart} onAddToCart={handleAddToCart} displayRate={getDisplayRate(selectedService)} />;
     }
     if (view === 'my-orders') {
       return <MyOrdersScreen orders={orders} lang={lang} />;
@@ -1084,6 +1181,107 @@ const App: React.FC = () => {
             {renderContent()}
           </div>
 
+          {/* Floating Cart Button */}
+          {view === 'main' && serviceCart.length > 0 && (
+            <div className="fixed bottom-32 right-6 z-40">
+              <button
+                onClick={() => {
+                  // Toggle cart modal or show mini-list
+                  const modalEl = document.getElementById('cart-modal');
+                  if (modalEl) {
+                    modalEl.classList.toggle('hidden');
+                  }
+                }}
+                className="w-16 h-16 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white font-black text-xl shadow-2xl flex items-center justify-center active:scale-90 transition-all hover:shadow-3xl border-4 border-white animate-pulse"
+              >
+                🛒 {serviceCart.length}
+              </button>
+            </div>
+          )}
+
+          {/* Cart Mini-List Modal */}
+          {view === 'main' && serviceCart.length > 0 && (
+            <div 
+              id="cart-modal"
+              className="hidden fixed inset-0 bg-black/50 z-50 flex items-end"
+              onClick={() => document.getElementById('cart-modal')?.classList.add('hidden')}
+            >
+              <div 
+                className="w-full bg-white rounded-t-[40px] p-6 space-y-4 max-h-[80vh] overflow-y-auto animate-in slide-in-from-bottom-8"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-2xl font-black text-slate-800">🛒 Service Cart</h3>
+                  <button 
+                    onClick={() => document.getElementById('cart-modal')?.classList.add('hidden')}
+                    className="text-slate-400 font-bold text-2xl hover:text-slate-600"
+                  >
+                    ×
+                  </button>
+                </div>
+
+                {/* Cart Items */}
+                <div className="space-y-3">
+                  {serviceCart.map((service, idx) => (
+                    <div 
+                      key={idx}
+                      className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-[20px] border-2 border-purple-100 flex items-center justify-between"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="font-black text-slate-800 truncate">{service.name[lang]}</div>
+                        <div className="text-sm text-slate-600">⏱️ {service.time} • {service.rate}</div>
+                      </div>
+                      <button
+                        onClick={() => handleRemoveFromCart(idx)}
+                        className="ml-3 px-3 py-2 bg-red-100 hover:bg-red-200 text-red-600 font-black rounded-[12px] active:scale-95 transition-all text-sm"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Cart Summary */}
+                <div className="bg-slate-50 p-4 rounded-[20px] border-2 border-slate-100 space-y-2">
+                  <div className="flex justify-between font-bold text-slate-600">
+                    <span>Total Services:</span>
+                    <span>{serviceCart.length}</span>
+                  </div>
+                  <div className="flex justify-between font-black text-lg text-slate-900">
+                    <span>Total Price:</span>
+                    <span className="text-pink-500">
+                      ₹{serviceCart.reduce((sum, s) => {
+                        const priceStr = typeof s.rate === 'string' ? s.rate : String(s.rate);
+                        const price = parseInt(priceStr.replace(/[^\d]/g, ''), 10) || 0;
+                        return sum + price;
+                      }, 0)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between font-bold text-slate-600 pt-2 border-t border-slate-200">
+                    <span>Total Duration:</span>
+                    <span>{serviceCart.map(s => s.time).join(' + ')}</span>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="space-y-3 pt-4">
+                  <button
+                    onClick={handleCheckoutCart}
+                    className="w-full py-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-black text-lg rounded-[30px] shadow-lg active:scale-95 transition-all"
+                  >
+                    💚 Proceed to Checkout ({serviceCart.length})
+                  </button>
+                  <button
+                    onClick={handleClearCart}
+                    className="w-full py-3 bg-red-100 text-red-600 font-bold rounded-[25px] active:scale-95 transition-all"
+                  >
+                    🗑️ Clear Cart
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Bottom Navigation */}
           {view === 'main' && activeTab !== 'reels' && (
             <div className="absolute bottom-6 left-6 right-6 bg-white/90 backdrop-blur-lg border border-slate-100 rounded-[30px] p-3 flex justify-between items-center shadow-xl z-50">
@@ -1114,6 +1312,13 @@ const App: React.FC = () => {
             </div>
           )}
         </div>
+      )}
+      {/* Show Update Available Popup */}
+      {showUpdateAvailable && (
+        <UpdateAvailable 
+          onUpdate={() => console.log('Update triggered')}
+          onDismiss={() => setShowUpdateAvailable(false)}
+        />
       )}
       </>
     </GoogleOAuthProvider>

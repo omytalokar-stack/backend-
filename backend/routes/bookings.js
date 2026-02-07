@@ -19,6 +19,22 @@ const convert24To12 = (hour) => {
   return `${hour - 12}:00 PM`;
 };
 
+// GET user's bookings (Pending/Done)
+router.get('/user', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    console.log(`📥 Fetching bookings for user: ${userId}`);
+    
+    const bookings = await Booking.find({ userId }).sort({ createdAt: -1 });
+    console.log(`✅ Found ${bookings.length} bookings for user`);
+    
+    res.json(bookings);
+  } catch (err) {
+    console.error('❌ Error fetching user bookings:', err.message);
+    res.status(500).json({ error: 'Failed to fetch bookings', details: err.message });
+  }
+});
+
 router.get('/available', authenticateToken, async (req, res) => {
   try {
     const { serviceId, date } = req.query;
@@ -112,7 +128,7 @@ router.get('/available', authenticateToken, async (req, res) => {
 router.post('/', authenticateToken, async (req, res) => {
   try {
     console.log('📥 Creating booking:', { userId: req.user.userId, body: req.body });
-    const { serviceId, date, startHour, endHour } = req.body;
+    const { serviceId, date, startHour, endHour, customerName, address, totalPrice, totalDuration } = req.body;
     if (!serviceId || !date || startHour == null || endHour == null) {
       return res.status(400).json({ error: 'Missing fields: serviceId, date, startHour, endHour required' });
     }
@@ -148,17 +164,21 @@ router.post('/', authenticateToken, async (req, res) => {
       });
     }
 
-    // Safe to create booking
+    // Safe to create booking with optional customerName and address
     const b = await Booking.create({ 
       userId: req.user.userId, 
       serviceId, 
       date, 
       startHour, 
       endHour, 
-      status: 'Pending' 
+      status: 'Pending',
+      customerName: customerName || null,
+      address: address || null,
+      totalPrice: totalPrice || 0,
+      totalDuration: totalDuration || null
     });
     
-    console.log('✅ Booking created successfully:', { bookingId: b._id, slot: `${startHour}-${endHour}` });
+    console.log('✅ Booking created successfully:', { bookingId: b._id, slot: `${startHour}-${endHour}`, customerName });
     // Create admin notifications and try to push to subscribed admins
     try {
       // Create a readable message

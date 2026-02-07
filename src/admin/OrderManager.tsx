@@ -11,6 +11,10 @@ type BookingItem = {
   startHour: number;
   endHour: number;
   status: string;
+  customerName?: string;
+  address?: string;
+  totalPrice?: number;
+  totalDuration?: string;
   userName?: string;
 };
 type ServiceItem = { _id: string; name: string };
@@ -358,10 +362,19 @@ const OrderManager: React.FC = () => {
             <div className="p-5 rounded-2xl border border-slate-200 bg-white shadow-lg space-y-5">
               {/* Customer Info - PROMINENT */}
               <div className="border-b border-slate-200 pb-4">
-                <div className="text-3xl font-black text-slate-900">{getCustomerDetails(detailPageOrder.userId).name}</div>
+                <div className="text-3xl font-black text-slate-900">
+                  {detailPageOrder.customerName || getCustomerDetails(detailPageOrder.userId).name}
+                </div>
                 <div className="text-2xl font-bold text-green-600 mt-1">📱 {getCustomerDetails(detailPageOrder.userId).phone}</div>
                 <div className="text-xs text-slate-500 mt-2 font-bold">Order ID: {detailPageOrder._id.slice(-8).toUpperCase()}</div>
                 <div className="text-xs text-slate-500 font-bold">{getCustomerDetails(detailPageOrder.userId).email}</div>
+                
+                {/* Address if present */}
+                {detailPageOrder.address && (
+                  <div className="text-sm font-bold text-slate-700 mt-3 p-3 bg-blue-50 rounded-[12px] border-l-4 border-blue-400">
+                    📍 <span className="font-black">{detailPageOrder.address}</span>
+                  </div>
+                )}
               </div>
 
               {/* Service Details */}
@@ -441,8 +454,13 @@ const OrderManager: React.FC = () => {
                     <div className="flex flex-col gap-3">
                       {/* Customer Name & Phone - LARGEST */}
                       <div>
-                        <div className="text-2xl font-black text-slate-900 leading-tight">{customer.name}</div>
+                        <div className="text-2xl font-black text-slate-900 leading-tight">
+                          {o.customerName || customer.name}
+                        </div>
                         <div className="text-lg font-bold text-green-600 mt-0.5">📱 {customer.phone}</div>
+                        {o.address && (
+                          <div className="text-xs font-bold text-slate-600 mt-2">📍 {o.address}</div>
+                        )}
                       </div>
 
                       {/* Service & Order ID - Small in corner */}

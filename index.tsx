@@ -14,11 +14,48 @@ root.render(
   </React.StrictMode>
 );
 
-// Register a simple service worker for PWA installability/offline
+// Register service worker with update detection
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
-      .then(reg => console.log('ServiceWorker registered:', reg.scope))
-      .catch(err => console.warn('ServiceWorker registration failed:', err));
+      .then(registration => {
+        console.log('✅ ServiceWorker registered:', registration.scope);
+        
+        // Check for updates periodically (every 6 hours)
+        setInterval(() => {
+          console.log('🔄 Checking for service worker updates...');
+          registration.update().catch(err => {
+            console.warn('⚠️ Failed to check for updates:', err);
+          });
+        }, 6 * 60 * 60 * 1000); // 6 hours
+
+        // Listen for when a new service worker is waiting
+        registration.addEventListener('updatefound', () => {
+          console.log('🆕 New service worker found');
+          const newWorker = registration.installing;
+          
+          if (!newWorker) return;
+
+          newWorker.addEventListener('statechange', () => {
+            console.log(`📡 Service Worker state: ${newWorker.state}`);
+            
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              // New service worker is waiting
+              console.log('🚀 Update available - dispatching event');
+              window.dispatchEvent(new CustomEvent('app-update-available', { detail: { registration } }));
+            }
+          });
+        });
+
+        // Handle SKIP_WAITING message from popup
+        navigator.serviceWorker.addEventListener('message', (event) => {
+          if (event.data && event.data.type === 'SKIP_WAITING') {
+            console.log('⏭️ SKIP_WAITING message received');
+            registration.waiting?.postMessage({ type: 'SKIP_WAITING' });
+          }
+        });
+      })
+      .catch(err => console.warn('❌ ServiceWorker registration failed:', err));
   });
 }
+

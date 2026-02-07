@@ -10,10 +10,11 @@ interface Props {
   service: Service;
   lang: Language;
   onBook: () => void;
+  onAddToCart?: (service: Service) => void;
   displayRate?: string;
 }
 
-const ProductDetails: React.FC<Props> = ({ service, lang, onBook, displayRate }) => {
+const ProductDetails: React.FC<Props> = ({ service, lang, onBook, onAddToCart, displayRate }) => {
   const t = translations[lang];
   const [showVideoModal, setShowVideoModal] = useState(false);
   const [fullService, setFullService] = useState<Service | null>(service);
@@ -276,13 +277,21 @@ const ProductDetails: React.FC<Props> = ({ service, lang, onBook, displayRate })
         </div>
 
         {/* Fixed Bottom Button */}
-        <div className="fixed bottom-24 left-6 right-6 z-50">
+        <div className="fixed bottom-24 left-6 right-6 z-50 space-y-3">
           <button 
             onClick={onBook}
             className="w-full py-5 bg-[#FFB7C5] text-white font-black text-xl rounded-[30px] shadow-[0_10px_30px_rgba(255,183,197,0.4)] active:scale-[0.98] active:shadow-lg transition-all"
           >
             {t.bookNow}
           </button>
+          {onAddToCart && (
+            <button 
+              onClick={() => onAddToCart(fullService)}
+              className="w-full py-4 bg-gradient-to-r from-purple-400 to-pink-300 text-white font-black text-lg rounded-[30px] shadow-[0_8px_25px_rgba(168,85,247,0.3)] active:scale-[0.98] active:shadow-lg transition-all border-2 border-white/30"
+            >
+              ➕ Add More Services
+            </button>
+          )}
         </div>
       </div>
     </div>

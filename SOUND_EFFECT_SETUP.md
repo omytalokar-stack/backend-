@@ -11,10 +11,10 @@ The app currently has a **placeholder** sound file. You need to replace it with 
 1. Visit: https://pixabay.com/sound-effects/
 2. Search for the sound effect by **zec53** (ID: 271921 or similar)
 3. Click "Download" and select **MP3** format
-4. The file will be something like: `app-opening.mp3` or with a Pixabay ID
+4. The file will be something like: `C:\Users\user\Downloads\corporate-elegant-logo-10-sec-271921.mp3` or with a Pixabay ID
 
 ### Step 2: Replace the Placeholder
-1. Place your downloaded `app-opening.mp3` file in:
+1. Place your downloaded `C:\Users\user\Downloads\corporate-elegant-logo-10-sec-271921.mp3` file in:
    ```
    /public/sounds/app-opening.mp3
    ```

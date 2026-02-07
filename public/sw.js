@@ -149,3 +149,12 @@ self.addEventListener('notificationclose', (event) => {
   console.log('Notification closed');
 });
 
+// Handle messages from the client (UpdateAvailable popup)
+self.addEventListener('message', (event) => {
+  console.log('📬 Service Worker received message:', event.data);
+  
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    console.log('⏭️ SKIP_WAITING received - activating new service worker');
+    self.skipWaiting();
+  }
+});
