@@ -377,12 +377,24 @@ const OrderManager: React.FC = () => {
                 )}
               </div>
 
-              {/* Service Details */}
+              {/* Services Details - Show all if multiple */}
               <div className="space-y-3">
-                <div className="bg-indigo-50 p-3 rounded-[12px]">
-                  <div className="text-xs font-bold text-slate-500 uppercase tracking-wide">Service</div>
-                  <div className="text-lg font-black text-slate-800 mt-1">{nameByService(detailPageOrder.serviceId)}</div>
-                </div>
+                {(detailPageOrder as any).services && Array.isArray((detailPageOrder as any).services) && (detailPageOrder as any).services.length > 0 ? (
+                  <div className="bg-indigo-50 p-3 rounded-[12px] space-y-2">
+                    <div className="text-xs font-bold text-slate-500 uppercase tracking-wide">Services ({(detailPageOrder as any).services.length})</div>
+                    {(detailPageOrder as any).services.map((svc: any, idx: number) => (
+                      <div key={idx} className="flex justify-between items-center bg-white p-2 rounded-[8px] border border-indigo-100">
+                        <span className="text-sm font-black text-slate-800">{svc.serviceName || nameByService(detailPageOrder.serviceId)}</span>
+                        <span className="text-sm font-bold text-pink-500">₹{svc.price || 0}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="bg-indigo-50 p-3 rounded-[12px]">
+                    <div className="text-xs font-bold text-slate-500 uppercase tracking-wide">Service</div>
+                    <div className="text-lg font-black text-slate-800 mt-1">{nameByService(detailPageOrder.serviceId)}</div>
+                  </div>
+                )}
 
                 {/* Date & Time */}
                 <div className="grid grid-cols-2 gap-3">
@@ -463,11 +475,19 @@ const OrderManager: React.FC = () => {
                         )}
                       </div>
 
-                      {/* Service & Order ID - Small in corner */}
+                      {/* Services & Order ID */}
                       <div className="flex justify-between items-start gap-2">
                         <div className="flex-1 min-w-0">
-                          <div className="text-sm font-bold text-slate-600 truncate">{nameByService(o.serviceId)}</div>
-                          <div className="text-xs text-slate-400 truncate">Order: {o._id.slice(-6).toUpperCase()}</div>
+                          {(o as any).services && Array.isArray((o as any).services) && (o as any).services.length > 0 ? (
+                            <div className="space-y-1">
+                              {(o as any).services.map((svc: any, idx: number) => (
+                                <div key={idx} className="text-sm font-bold text-slate-600">{svc.serviceName || nameByService(o.serviceId)}</div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-sm font-bold text-slate-600">{nameByService(o.serviceId)}</div>
+                          )}
+                          <div className="text-xs text-slate-400 mt-1">Order: {o._id.slice(-6).toUpperCase()}</div>
                         </div>
                         <span className={`px-2.5 py-1 rounded-full text-xs font-bold text-white shadow-sm flex-shrink-0 whitespace-nowrap ${o.status === 'Confirmed' ? 'bg-green-500' : o.status === 'Pending' ? 'bg-yellow-500' : 'bg-slate-400'}`}>{o.status}</span>
                       </div>

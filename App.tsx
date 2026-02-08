@@ -643,7 +643,9 @@ const App: React.FC = () => {
     };
 
     console.log('🔄 Sending booking request to:', `${API_BASE}/api/bookings`);
-    console.log('📦 Payload with services:', bookingPayload);
+    console.log('📦 Frontend Payload:', JSON.stringify(bookingPayload, null, 2));
+    console.log('📋 Services Array:', servicesArray.length, 'items');
+    servicesArray.forEach((s, i) => console.log(`  [${i}] ${s.serviceName} - ₹${s.price}`));
 
     // Send booking to backend
     fetch(`${API_BASE}/api/bookings`, {
@@ -700,6 +702,8 @@ const App: React.FC = () => {
       }
       
       alert('✅ Booking confirmed! Refresh Admin Panel Orders to see it');
+      // Clear cart after successful booking
+      setServiceCart([]);
       setView('my-orders');
     })
     .catch(err => {
