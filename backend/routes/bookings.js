@@ -129,7 +129,7 @@ router.get('/available', authenticateToken, async (req, res) => {
 router.post('/', authenticateToken, async (req, res) => {
   try {
     console.log('📥 Creating booking:', { userId: req.user.userId, body: JSON.stringify(req.body) });
-    const { serviceId, date, startHour, endHour, customerName, address, totalPrice, totalDuration, servicesArray } = req.body;
+      const { serviceId, date, startHour, endHour, startAmpm, endAmpm, customerName, address, totalPrice, totalDuration, servicesArray } = req.body;
     
     // Enhanced validation with detailed logging
     const missingFields = [];
@@ -147,8 +147,21 @@ router.post('/', authenticateToken, async (req, res) => {
     }
     
     // Validate hour values
-    const startHourNum = parseInt(startHour, 10);
-    const endHourNum = parseInt(endHour, 10);
+      function to24(h, ampm) {
+        const hh = Number(h);
+        if (!ampm && !Number.isInteger(hh)) return NaN;
+        if (!ampm) return hh;
+        const upper = String(ampm).toUpperCase();
+        if (upper === 'AM') {
+          if (hh === 12) return 0;
+          return hh;
+        }
+        if (hh === 12) return 12;
+        return hh + 12;
+      }
+
+      const startHourNum = to24(startHour, startAmpm);
+      const endHourNum = to24(endHour, endAmpm);
     
     if (isNaN(startHourNum) || isNaN(endHourNum)) {
       console.error('❌ Hours must be numbers:', { startHour, endHour, parsed: { startHourNum, endHourNum } });

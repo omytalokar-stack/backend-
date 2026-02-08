@@ -389,22 +389,41 @@ const BookingPage: React.FC<Props> = ({ service, serviceCart, lang, onConfirm, g
                       </div>
                     ) : (
                       <div className="flex flex-wrap gap-2">
-                        {filtered.map(s => (
-                          <button
-                            key={s.label}
-                            onClick={() => {
-                              console.log(`✅ Slot selected: ${s.label} → Hours: ${s.startHour}-${s.endHour}`);
-                              setFormData({...formData, slot: s.label, startHour: s.startHour, endHour: s.endHour});
-                            }}
-                            className={`px-5 py-2.5 rounded-[30px] font-bold text-sm transition-all border-2 whitespace-nowrap ${
-                              formData.slot === s.label 
-                                ? 'bg-[#FFB7C5] text-white border-[#FFB7C5] shadow-md scale-105' 
-                                : 'bg-white text-slate-600 border-slate-100 hover:border-pink-200'
-                            }`}
-                          >
-                            {s.label}
-                          </button>
-                        ))}
+                        {filtered.map(s => {
+                          const start24 = Number(s.startHour);
+                          const end24 = Number(s.endHour);
+                          const startAmpm = start24 >= 12 ? 'PM' : 'AM';
+                          const endAmpm = end24 >= 12 ? 'PM' : 'AM';
+                          const start12 = start24 % 12 === 0 ? 12 : start24 % 12;
+                          const end12 = end24 % 12 === 0 ? 12 : end24 % 12;
+                          return (
+                            <button
+                              key={s.label}
+                              onClick={() => {
+                                console.log(`✅ Slot selected: ${s.label} → start: ${start12} ${startAmpm}, end: ${end12} ${endAmpm} (client will send 12-hour)`);
+                                setFormData({
+                                  ...formData,
+                                  slot: s.label,
+                                  startHour24: s.startHour,
+                                  endHour24: s.endHour,
+                                  // use 12-hour fields to send to server
+                                  startHour: start12,
+                                  startAmpm: startAmpm,
+                                  endHour: end12,
+                                  endAmpm: endAmpm
+                                });
+                              }}
+                              className={`px-5 py-2.5 rounded-[30px] font-bold text-sm transition-all border-2 whitespace-nowrap ${
+                                formData.slot === s.label 
+                                  ? 'bg-[#FFB7C5] text-white border-[#FFB7C5] shadow-md scale-105' 
+                                  : 'bg-white text-slate-600 border-slate-100 hover:border-pink-200'
+                              }`}
+                              title={`Start: ${s.startHour} (24h)`}
+                            >
+                              {s.label}
+                            </button>
+                          );
+                        })}
                       </div>
                     )}
                   </>
