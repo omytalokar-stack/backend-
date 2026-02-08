@@ -128,37 +128,69 @@ router.get('/available', authenticateToken, async (req, res) => {
 
 router.post('/', authenticateToken, async (req, res) => {
   try {
-    console.log('📥 Creating booking:', { userId: req.user.userId, body: req.body });
+    console.log('📥 Creating booking:', { userId: req.user.userId, body: JSON.stringify(req.body) });
     const { serviceId, date, startHour, endHour, customerName, address, totalPrice, totalDuration, servicesArray } = req.body;
-    if (!serviceId || !date || startHour == null || endHour == null) {
-      return res.status(400).json({ error: 'Missing fields: serviceId, date, startHour, endHour required' });
+    
+    // Enhanced validation with detailed logging
+    const missingFields = [];
+    if (!serviceId) missingFields.push('serviceId');
+    if (!date) missingFields.push('date');
+    if (startHour == null) missingFields.push('startHour');
+    if (endHour == null) missingFields.push('endHour');
+    
+    if (missingFields.length > 0) {
+      console.error('❌ Missing required fields:', missingFields);
+      return res.status(400).json({ 
+        error: `Missing required fields: ${missingFields.join(', ')}`,
+        received: { serviceId, date, startHour, endHour }
+      });
     }
+    
+    // Validate hour values
+    const startHourNum = parseInt(startHour, 10);
+    const endHourNum = parseInt(endHour, 10);
+    
+    if (isNaN(startHourNum) || isNaN(endHourNum)) {
+      console.error('❌ Hours must be numbers:', { startHour, endHour, parsed: { startHourNum, endHourNum } });
+      return res.status(400).json({ 
+        error: 'startHour and endHour must be numeric values',
+        received: { startHour, endHour }
+      });
+    }
+    
     // Validate allowed hours (13:00-19:00 window)
-    if (startHour < 13 || startHour > 18 || endHour <= startHour || endHour > 19) {
-      return res.status(400).json({ error: 'Invalid slot. Bookings allowed between 13:00 and 19:00 only' });
+    if (startHourNum < 13 || startHourNum > 18 || endHourNum <= startHourNum || endHourNum > 19) {
+      console.error('❌ Invalid slot hours:', { startHourNum, endHourNum });
+      return res.status(400).json({ 
+        error: 'Invalid slot. Bookings allowed between 13:00 (1 PM) and 19:00 (7 PM) only',
+        allowed: '13-18 for start, up to 19 for end',
+        received: { startHour: startHourNum, endHour: endHourNum }
+      });
     }
 
     // Reject bookings for past time slots
     const now = new Date();
-    const bookingDateTime = new Date(`${date}T${String(startHour).padStart(2, '0')}:00:00`);
+    const bookingDateTime = new Date(`${date}T${String(startHourNum).padStart(2, '0')}:00:00`);
     if (bookingDateTime < now) {
-      console.warn('⚠️ Attempted booking for past time:', { date, startHour, now: now.toISOString() });
+      console.warn('⚠️ Attempted booking for past time:', { date, startHour: startHourNum, now: now.toISOString() });
       return res.status(400).json({ error: 'Cannot book for past time. Please select a future slot.' });
     }
+
+    console.log('✅ Booking validation passed:', { serviceId, date, startHour: startHourNum, endHour: endHourNum });
 
     // CRITICAL: Real-time double-booking check BEFORE creating booking
     // Check if ANY booking overlaps with requested slot
     const clashes = await Booking.findOne({
       date,
       $or: [
-        { startHour: { $lt: endHour, $gte: startHour } },
-        { endHour: { $gt: startHour, $lte: endHour } },
-        { startHour: { $lte: startHour }, endHour: { $gte: endHour } }
+        { startHour: { $lt: endHourNum, $gte: startHourNum } },
+        { endHour: { $gt: startHourNum, $lte: endHourNum } },
+        { startHour: { $lte: startHourNum }, endHour: { $gte: endHourNum } }
       ]
     });
 
     if (clashes) {
-      console.warn('⚠️ Slot conflict detected! Another booking overlaps:', { clashes: clashes._id, requestedSlot: { startHour, endHour } });
+      console.warn('⚠️ Slot conflict detected! Another booking overlaps:', { clashes: clashes._id, requestedSlot: { startHour: startHourNum, endHour: endHourNum } });
       return res.status(409).json({ 
         error: 'This slot is already booked by another user. Please refresh and select a different slot.',
         bookedSlot: { startHour: clashes.startHour, endHour: clashes.endHour }
@@ -170,19 +202,20 @@ router.post('/', authenticateToken, async (req, res) => {
       userId: req.user.userId, 
       serviceId, 
       date, 
-      startHour, 
-      endHour, 
+      startHour: startHourNum, 
+      endHour: endHourNum, 
       status: 'Pending',
       customerName: customerName || null,
       address: address || null,
       totalPrice: totalPrice || 0,
       totalDuration: totalDuration || null,
-      services: servicesArray || [] // Store array of selected services with their details
+      services: (Array.isArray(servicesArray) && servicesArray.length > 0) ? servicesArray : [] // Store array of selected services with their details
     };
 
+    console.log('📝 Booking data to save:', JSON.stringify(bookingData, null, 2));
     const b = await Booking.create(bookingData);
     
-    console.log('✅ Booking created successfully:', { bookingId: b._id, slot: `${startHour}-${endHour}`, customerName, servicesCount: servicesArray?.length || 1 });
+    console.log('✅ Booking created successfully:', { bookingId: b._id, slot: `${startHourNum}-${endHourNum}`, customerName, servicesCount: (Array.isArray(servicesArray) ? servicesArray.length : 0) });
     // Create admin notifications and try to push to subscribed admins
     try {
       // Create a readable message

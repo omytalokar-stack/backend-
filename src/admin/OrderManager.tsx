@@ -64,12 +64,15 @@ const OrderManager: React.FC = () => {
       console.log('✅ Users:', Array.isArray(d3) ? d3.length : 0);
       
       // Enrich orders with services array info
-      const enrichedOrders = (Array.isArray(d1) ? d1 : []).map((order: any) => ({
-        ...order,
-        servicesList: order.services && Array.isArray(order.services) && order.services.length > 0 
-          ? order.services 
-          : [{ serviceId: order.serviceId, serviceName: '', price: 0 }]
-      }));
+      const enrichedOrders = (Array.isArray(d1) ? d1 : []).map((order: any) => {
+        const hasList = order.services && Array.isArray(order.services) && order.services.length > 0;
+        const list = hasList ? order.services : [{ serviceId: order.serviceId, serviceName: '', price: 0 }];
+        console.log(`📦 Order ${order._id?.slice(-6)}: ${hasList ? list.length : 1} service(s) - ${list.map(s => s.serviceName).join(' + ')}`);
+        return {
+          ...order,
+          servicesList: list
+        };
+      });
       
       setOrders(enrichedOrders);
       setServices(Array.isArray(d2) ? d2 : []);
@@ -409,18 +412,21 @@ const OrderManager: React.FC = () => {
                 </div>
                 {(detailPageOrder as any).servicesList && Array.isArray((detailPageOrder as any).servicesList) && (detailPageOrder as any).servicesList.length > 0 ? (
                   <div className="space-y-2">
-                    {(detailPageOrder as any).servicesList.map((svc: any, idx: number) => (
-                      <div key={idx} className="flex justify-between items-center bg-white p-3 rounded-[12px] border border-slate-200">
-                        <div>
-                          <p className="font-black text-slate-800">{svc.serviceName || nameByService(detailPageOrder.serviceId)}</p>
-                          <p className="text-xs text-slate-500 mt-0.5">⏱️ {svc.duration || detailPageOrder.totalDuration || '1 hour'}</p>
+                    {(detailPageOrder as any).servicesList.map((svc: any, idx: number) => {
+                      const svcName = svc.serviceName && svc.serviceName.trim() ? svc.serviceName : nameByService(svc.serviceId || detailPageOrder.serviceId);
+                      return (
+                        <div key={idx} className="flex justify-between items-center bg-white p-3 rounded-[12px] border-2 border-slate-100 hover:border-pink-200 transition-all">
+                          <div>
+                            <p className="font-black text-slate-800">{svcName}</p>
+                            <p className="text-xs text-slate-500 mt-0.5">⏱️ {svc.duration || detailPageOrder.totalDuration || '1 hour'}</p>
+                          </div>
+                          <span className="text-lg font-black text-pink-600">₹{svc.price || 0}</span>
                         </div>
-                        <span className="text-lg font-black text-pink-600">₹{svc.price || 0}</span>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
-                  <div className="bg-white p-3 rounded-[12px]">
+                  <div className="bg-white p-3 rounded-[12px] border-2 border-slate-100">
                     <p className="font-black text-slate-800">{nameByService(detailPageOrder.serviceId)}</p>
                     <p className="text-xs text-slate-500 mt-1">⏱️ {detailPageOrder.totalDuration || '1 hour'}</p>
                   </div>
@@ -524,11 +530,14 @@ const OrderManager: React.FC = () => {
                         <div className="flex-1 min-w-0">
                           {(o as any).servicesList && Array.isArray((o as any).servicesList) && (o as any).servicesList.length > 0 ? (
                             <div className="space-y-1">
-                              {(o as any).servicesList.map((svc: any, idx: number) => (
-                                <div key={idx} className="text-sm font-bold text-slate-600">
-                                  {svc.serviceName || nameByService(svc.serviceId || o.serviceId)}
-                                </div>
-                              ))}
+                              {(o as any).servicesList.map((svc: any, idx: number) => {
+                                const svcName = svc.serviceName && svc.serviceName.trim() ? svc.serviceName : nameByService(svc.serviceId || o.serviceId);
+                                return (
+                                  <div key={idx} className="text-sm font-bold text-slate-600">
+                                    {svcName}
+                                  </div>
+                                );
+                              })}
                             </div>
                           ) : (
                             <div className="text-sm font-bold text-slate-600">{nameByService(o.serviceId)}</div>

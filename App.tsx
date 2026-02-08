@@ -616,6 +616,13 @@ const App: React.FC = () => {
       return;
     }
 
+    // Validation
+    if (!newOrder.startHour || !newOrder.endHour || !newOrder.date) {
+      alert('❌ Error: Missing time slot or date. Please select a valid slot.');
+      console.error('❌ Booking validation failed:', { startHour: newOrder.startHour, endHour: newOrder.endHour, date: newOrder.date });
+      return;
+    }
+
     const serviceId = (selectedService as any)._id || selectedService.id;
     const date = newOrder.date || new Date().toISOString().slice(0, 10);
 
@@ -635,11 +642,21 @@ const App: React.FC = () => {
     // Calculate total price from all services
     const totalPrice = servicesArray.reduce((sum, s) => sum + (s.price || 0), 0);
 
+    // Validate hours are numeric and in correct range (13-18 for start, up to 19 for end)
+    const startHour = parseInt(String(newOrder.startHour), 10);
+    const endHour = parseInt(String(newOrder.endHour), 10);
+    
+    if (isNaN(startHour) || isNaN(endHour) || startHour < 13 || startHour > 18 || endHour <= startHour || endHour > 19) {
+      console.error('❌ Hour validation failed:', { startHour, endHour, isNaN_start: isNaN(startHour), isNaN_end: isNaN(endHour) });
+      alert(`❌ Invalid time slot: Hours must be between 1 PM (13:00) and 7 PM (19:00). Got: ${startHour}-${endHour}`);
+      return;
+    }
+
     const bookingPayload = {
       serviceId,
       date,
-      startHour: newOrder.startHour,
-      endHour: newOrder.endHour,
+      startHour: startHour,
+      endHour: endHour,
       customerName: (newOrder as any).name || null,
       address: (newOrder as any).address || null,
       totalPrice: totalPrice,
@@ -648,9 +665,10 @@ const App: React.FC = () => {
     };
 
     console.log('🔄 Sending booking request to:', `${API_BASE}/api/bookings`);
-    console.log('📦 Frontend Payload:', JSON.stringify(bookingPayload, null, 2));
-    console.log('📋 Services Array:', servicesArray.length, 'items');
+    console.log('📦 Booking Payload:', JSON.stringify(bookingPayload, null, 2));
+    console.log('📋 Services Count:', servicesArray.length);
     servicesArray.forEach((s, i) => console.log(`  [${i}] ${s.serviceName} - ₹${s.price}`));
+    console.log('⏰ Time Slot:', `${startHour}:00 - ${endHour}:00 (24-hour format)`);
 
     // Send booking to backend
     fetch(`${API_BASE}/api/bookings`, {
@@ -664,17 +682,19 @@ const App: React.FC = () => {
     .then(async res => {
       const data = await res.json();
       console.log('📬 Response status:', res.status);
-      console.log('📬 Response data:', data);
+      console.log('📬 Response body:', JSON.stringify(data, null, 2));
       
       if (!res.ok) {
         // Handle specific error codes
         if (res.status === 409) {
           // Slot conflict - another user booked it
-          throw new Error('❌ Oops! Another user just booked this slot. Please refresh and select a different time.');
+          throw new Error('❌ Another user just booked this slot. Please refresh and select a different time.');
         } else if (res.status === 400) {
-          throw new Error(data.error || 'Invalid booking request');
+          throw new Error(`❌ Invalid request: ${data.error || 'Check your input'}`);
+        } else if (res.status === 500) {
+          throw new Error(`❌ Server error: ${data.error || data.details || 'Failed to create booking'}`);
         } else {
-          throw new Error(data.error || `Server error: ${res.status}`);
+          throw new Error(data.error || `Server error (${res.status}): ${data.details || res.statusText}`);
         }
       }
       return data;

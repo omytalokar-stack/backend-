@@ -384,23 +384,28 @@ const BookingPage: React.FC<Props> = ({ service, serviceCart, lang, onConfirm, g
                       </div>
                     )}
                     {filtered.length === 0 ? (
-                      <div className="w-full text-center py-4 text-slate-500 text-sm font-semibold">
-                        No available slots for this date
+                      <div className="w-full text-center py-4 text-slate-500 text-sm font-semibold bg-red-50 rounded-[12px]">
+                        ❌ No available slots for this date
                       </div>
                     ) : (
-                      filtered.map(s => (
-                        <button
-                          key={s.label}
-                          onClick={() => setFormData({...formData, slot: s.label, startHour: s.startHour, endHour: s.endHour})}
-                          className={`px-5 py-2.5 rounded-[30px] font-bold text-sm transition-all border-2 ${
-                            formData.slot === s.label 
-                              ? 'bg-[#FFB7C5] text-white border-[#FFB7C5] shadow-md scale-105' 
-                              : 'bg-white text-slate-600 border-slate-100 hover:border-pink-200'
-                          }`}
-                        >
-                          {s.label}
-                        </button>
-                      ))
+                      <div className="flex flex-wrap gap-2">
+                        {filtered.map(s => (
+                          <button
+                            key={s.label}
+                            onClick={() => {
+                              console.log(`✅ Slot selected: ${s.label} → Hours: ${s.startHour}-${s.endHour}`);
+                              setFormData({...formData, slot: s.label, startHour: s.startHour, endHour: s.endHour});
+                            }}
+                            className={`px-5 py-2.5 rounded-[30px] font-bold text-sm transition-all border-2 whitespace-nowrap ${
+                              formData.slot === s.label 
+                                ? 'bg-[#FFB7C5] text-white border-[#FFB7C5] shadow-md scale-105' 
+                                : 'bg-white text-slate-600 border-slate-100 hover:border-pink-200'
+                            }`}
+                          >
+                            {s.label}
+                          </button>
+                        ))}
+                      </div>
                     )}
                   </>
                 );
@@ -446,7 +451,22 @@ const BookingPage: React.FC<Props> = ({ service, serviceCart, lang, onConfirm, g
         </div>
 
         <button 
-          onClick={() => onConfirm(formData)}
+          onClick={() => {
+            console.log('📋 Booking validation:', {
+              name: formData.name,
+              address: formData.address,
+              slot: formData.slot,
+              date: formData.date,
+              startHour: formData.startHour,
+              endHour: formData.endHour,
+              isValid: !!formData.name && !!formData.address && !!formData.slot
+            });
+            if (!formData.name || !formData.address || !formData.slot) {
+              alert('❌ Please fill in Name, Address, and select a Time Slot');
+              return;
+            }
+            onConfirm(formData);
+          }}
           disabled={!formData.name || !formData.address || !formData.slot || isHoliday}
           className="w-full py-5 bg-[#FFB7C5] disabled:bg-slate-200 text-white font-black text-xl rounded-[30px] shadow-lg active:scale-95 transition-all mt-4"
         >
