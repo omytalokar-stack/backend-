@@ -16,9 +16,11 @@ type BookingItem = {
   totalPrice?: number;
   totalDuration?: string;
   userName?: string;
+  services?: Array<{ serviceId: string; serviceName: string; price: number; duration: string }>;
+  servicesList?: Array<{ serviceId: string; serviceName: string; price: number; duration: string }>;
 };
 type ServiceItem = { _id: string; name: string };
-type UserItem = { _id: string; email?: string; phone?: string; name?: string };
+type UserItem = { _id: string; email?: string; phone?: string; name?: string; picture?: string; avatarUrl?: string };
 
 const OrderManager: React.FC = () => {
   const [orders, setOrders] = useState<BookingItem[]>([]);
@@ -169,7 +171,8 @@ const OrderManager: React.FC = () => {
     return {
       name: u?.name || 'Unknown Customer',
       phone: u?.phone || 'No phone',
-      email: u?.email || 'No email'
+      email: u?.email || 'No email',
+      photo: u?.picture || u?.avatarUrl || '/icons/icon-192.svg'
     };
   };
   const labelTime = (o: BookingItem) => {
@@ -368,60 +371,93 @@ const OrderManager: React.FC = () => {
             </button>
 
             <div className="p-5 rounded-2xl border border-slate-200 bg-white shadow-lg space-y-5">
-              {/* Customer Info - PROMINENT */}
-              <div className="border-b border-slate-200 pb-4">
-                <div className="text-3xl font-black text-slate-900">
-                  {detailPageOrder.customerName || getCustomerDetails(detailPageOrder.userId).name}
+              {/* Combo Detail Card Header */}
+              <div className="border-b-2 border-purple-200 pb-4 flex gap-4 items-start">
+                {/* Profile Photo */}
+                <div className="flex-shrink-0">
+                  <img 
+                    src={getCustomerDetails(detailPageOrder.userId).photo}
+                    alt="Profile"
+                    className="w-16 h-16 rounded-full object-cover shadow-lg border-3 border-pink-200"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).src = '/icons/icon-192.svg';
+                    }}
+                  />
                 </div>
-                <div className="text-2xl font-bold text-green-600 mt-1">📱 {getCustomerDetails(detailPageOrder.userId).phone}</div>
-                <div className="text-xs text-slate-500 mt-2 font-bold">Order ID: {detailPageOrder._id.slice(-8).toUpperCase()}</div>
-                <div className="text-xs text-slate-500 font-bold">{getCustomerDetails(detailPageOrder.userId).email}</div>
-                
-                {/* Address - from booking form if available */}
-                {(detailPageOrder.address || (detailPageOrder as any).servicesList?.[0]?.address) && (
-                  <div className="text-sm font-bold text-slate-700 mt-3 p-3 bg-blue-50 rounded-[12px] border-l-4 border-blue-400">
-                    📍 <span className="font-black">{detailPageOrder.address}</span>
+                {/* Customer Details */}
+                <div className="flex-1">
+                  <div className="text-2xl font-black text-slate-900">
+                    {detailPageOrder.customerName || getCustomerDetails(detailPageOrder.userId).name}
                   </div>
-                )}
+                  <div className="text-lg font-bold text-green-600 mt-1">📱 {getCustomerDetails(detailPageOrder.userId).phone}</div>
+                  <div className="text-xs text-slate-500 mt-1 font-bold">Order: {detailPageOrder._id.slice(-8).toUpperCase()}</div>
+                  <div className="text-xs text-slate-500 font-bold">{getCustomerDetails(detailPageOrder.userId).email}</div>
+                </div>
               </div>
+              
+              {/* Address Section */}
+              {detailPageOrder.address && (
+                <div className="text-sm font-bold text-slate-700 mt-4 p-4 bg-blue-50 rounded-[12px] border-l-4 border-blue-400">
+                  📍 <span className="font-black">{detailPageOrder.address}</span>
+                </div>
+              )}
 
-              {/* Services Details - Show all if multiple */}
-              <div className="space-y-3">
-                {(detailPageOrder as any).services && Array.isArray((detailPageOrder as any).services) && (detailPageOrder as any).services.length > 0 ? (
-                  <div className="bg-indigo-50 p-3 rounded-[12px] space-y-2">
-                    <div className="text-xs font-bold text-slate-500 uppercase tracking-wide">Services ({(detailPageOrder as any).services.length})</div>
-                    {(detailPageOrder as any).services.map((svc: any, idx: number) => (
-                      <div key={idx} className="flex justify-between items-center bg-white p-2 rounded-[8px] border border-indigo-100">
-                        <span className="text-sm font-black text-slate-800">{svc.serviceName || nameByService(detailPageOrder.serviceId)}</span>
-                        <span className="text-sm font-bold text-pink-500">₹{svc.price || 0}</span>
+              {/* Services Combo Card */}
+              <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-[20px] space-y-3 border-2 border-purple-100">
+                <div className="text-xs font-black uppercase text-slate-600 tracking-wide">
+                  🛍️ Services Combo ({(detailPageOrder as any).servicesList?.length || 1})
+                </div>
+                {(detailPageOrder as any).servicesList && Array.isArray((detailPageOrder as any).servicesList) && (detailPageOrder as any).servicesList.length > 0 ? (
+                  <div className="space-y-2">
+                    {(detailPageOrder as any).servicesList.map((svc: any, idx: number) => (
+                      <div key={idx} className="flex justify-between items-center bg-white p-3 rounded-[12px] border border-slate-200">
+                        <div>
+                          <p className="font-black text-slate-800">{svc.serviceName || nameByService(detailPageOrder.serviceId)}</p>
+                          <p className="text-xs text-slate-500 mt-0.5">⏱️ {svc.duration || detailPageOrder.totalDuration || '1 hour'}</p>
+                        </div>
+                        <span className="text-lg font-black text-pink-600">Rs {svc.price || 0}</span>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="bg-indigo-50 p-3 rounded-[12px]">
-                    <div className="text-xs font-bold text-slate-500 uppercase tracking-wide">Service</div>
-                    <div className="text-lg font-black text-slate-800 mt-1">{nameByService(detailPageOrder.serviceId)}</div>
+                  <div className="bg-white p-3 rounded-[12px]">
+                    <p className="font-black text-slate-800">{nameByService(detailPageOrder.serviceId)}</p>
+                    <p className="text-xs text-slate-500 mt-1">⏱️ {detailPageOrder.totalDuration || '1 hour'}</p>
                   </div>
                 )}
-
-                {/* Date & Time */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-teal-50 p-3 rounded-[12px]">
-                    <div className="text-xs font-bold text-slate-500 uppercase">Date</div>
-                    <div className="text-base font-black text-slate-800 mt-1">{new Date(detailPageOrder.date).toLocaleDateString()}</div>
+                
+                {/* Total Bill */}
+                <div className="border-t-2 border-slate-200 pt-3 mt-3">
+                  <div className="flex justify-between items-center">
+                    <span className="font-black text-slate-700">Total Bill:</span>
+                    <span className="text-2xl font-black text-pink-600">Rs {detailPageOrder.totalPrice || 0}</span>
                   </div>
-                  <div className="bg-teal-50 p-3 rounded-[12px]">
-                    <div className="text-xs font-bold text-slate-500 uppercase">Time</div>
-                    <div className="text-base font-black text-slate-800 mt-1">{labelTime(detailPageOrder)}</div>
-                  </div>
+                  {detailPageOrder.totalDuration && (
+                    <div className="flex justify-between items-center mt-2 text-sm">
+                      <span className="font-bold text-slate-600">Total Duration:</span>
+                      <span className="font-black text-slate-700">{detailPageOrder.totalDuration}</span>
+                    </div>
+                  )}
                 </div>
+              </div>
 
-                {/* Status */}
-                <div className={`p-3 rounded-[12px] text-center ${detailPageOrder.status === 'Confirmed' ? 'bg-green-100' : detailPageOrder.status === 'Pending' ? 'bg-yellow-100' : 'bg-slate-100'}`}>
-                  <div className="text-xs font-bold text-slate-500 uppercase">Status</div>
-                  <div className={`text-lg font-black mt-1 ${detailPageOrder.status === 'Confirmed' ? 'text-green-600' : detailPageOrder.status === 'Pending' ? 'text-yellow-600' : 'text-slate-600'}`}>
-                    {detailPageOrder.status === 'Confirmed' ? '✅' : detailPageOrder.status === 'Pending' ? '⏳' : '🔔'} {detailPageOrder.status}
-                  </div>
+              {/* Date & Time */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-teal-50 p-3 rounded-[12px]">
+                  <div className="text-xs font-bold text-slate-500 uppercase">Date</div>
+                  <div className="text-base font-black text-slate-800 mt-1">{new Date(detailPageOrder.date).toLocaleDateString()}</div>
+                </div>
+                <div className="bg-teal-50 p-3 rounded-[12px]">
+                  <div className="text-xs font-bold text-slate-500 uppercase">Time</div>
+                  <div className="text-base font-black text-slate-800 mt-1">{labelTime(detailPageOrder)}</div>
+                </div>
+              </div>
+
+              {/* Status */}
+              <div className={`p-3 rounded-[12px] text-center ${detailPageOrder.status === 'Confirmed' ? 'bg-green-100' : detailPageOrder.status === 'Pending' ? 'bg-yellow-100' : 'bg-slate-100'}`}>
+                <div className="text-xs font-bold text-slate-500 uppercase">Status</div>
+                <div className={`text-lg font-black mt-1 ${detailPageOrder.status === 'Confirmed' ? 'text-green-600' : detailPageOrder.status === 'Pending' ? 'text-yellow-600' : 'text-slate-600'}`}>
+                  {detailPageOrder.status === 'Confirmed' ? '✅' : detailPageOrder.status === 'Pending' ? '⏳' : '🔔'} {detailPageOrder.status}
                 </div>
               </div>
 

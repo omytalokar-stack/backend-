@@ -49,33 +49,45 @@ const MyOrdersScreen: React.FC<Props> = ({ orders, lang }) => {
             const totalPrice = servicesList.reduce((sum: number, s: any) => sum + (s.price || 0), 0);
             
             return (
-              <div key={order.id} className="bg-white p-6 rounded-[30px] border-2 border-slate-50 shadow-sm space-y-3 group hover:border-[#FFB7C5]/30 transition-all">
-                <div className="space-y-2">
+              <div key={order.id} className="bg-gradient-to-br from-purple-50 to-pink-50 p-6 rounded-[30px] border-2 border-purple-100 shadow-md space-y-4 group hover:shadow-lg transition-all">
+                {/* Header */}
+                <div className="space-y-2 border-b-2 border-purple-200 pb-4">
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-black uppercase px-2 py-0.5 bg-slate-100 text-slate-500 rounded-full">#{order.id}</span>
-                    <span className="text-xs font-bold text-slate-400">{order.date}</span>
+                    <span className="text-[10px] font-black uppercase px-2.5 py-1 bg-purple-200 text-purple-700 rounded-full">📦 Combo</span>
+                    <span className="text-xs font-bold text-slate-500">{order.date}</span>
+                    <span className={`text-xs font-black px-2.5 py-1 rounded-full ml-auto ${tab === 'Done' ? 'bg-green-100 text-green-600' : 'bg-yellow-100 text-yellow-600'}`}>
+                      {tab === 'Done' ? '✅ Done' : '⏳ Pending'}
+                    </span>
                   </div>
-                  <h4 className="font-black text-slate-800 text-lg">{servicesList.length > 1 ? `${servicesList.length} Services` : order.serviceName}</h4>
-                  {servicesList.length > 0 && (
-                    <div className="space-y-1.5">
-                      {servicesList.map((svc: any, idx: number) => (
-                        <div key={idx} className="text-sm text-slate-600 flex justify-between items-center bg-slate-50 px-3 py-2 rounded-[10px]">
-                          <span className="font-bold">{svc.serviceName || 'Service'}</span>
-                          <span className="text-pink-500 font-black">Rs {svc.price || 0}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <div className="flex items-center gap-4 pt-2">
-                    <span className="text-pink-500 font-black text-lg">Total: Rs {totalPrice}</span>
-                    <div className={tab === 'Done' ? 'flex items-center gap-1 text-[10px] font-black uppercase text-teal-600' : 'flex items-center gap-1 text-[10px] font-black uppercase text-yellow-600'}>
-                      {tab === 'Done' ? <CheckCircle2 size={12} /> : <Clock size={12} />}
-                      {tab === 'Done' ? t.done : t.pending}
-                    </div>
-                  </div>
+                  <h4 className="font-black text-slate-800 text-xl">
+                    {servicesList.length === 1 ? order.serviceName : `${servicesList.length} Services Order`}
+                  </h4>
                 </div>
-                <div className={tab === 'Done' ? 'p-4 rounded-[20px] transition-transform group-hover:rotate-12 flex-shrink-0 bg-[#E0F2F1]' : 'p-4 rounded-[20px] transition-transform group-hover:rotate-12 flex-shrink-0 bg-[#FFF9C4]'}>
-                  {tab === 'Done' ? <CheckCircle2 className="text-teal-500" /> : <Clock className="text-yellow-600" />}
+                
+                {/* Services List */}
+                {servicesList.length > 0 && (
+                  <div className="space-y-2">
+                    {servicesList.map((svc: any, idx: number) => (
+                      <div key={idx} className="bg-white p-3 rounded-[12px] border-2 border-slate-100 flex justify-between items-center hover:border-pink-200 transition-all">
+                        <div>
+                          <p className="font-black text-slate-800">{svc.serviceName || 'Service'}</p>
+                          <p className="text-xs text-slate-500 mt-1">⏱️ {svc.duration || '1 hour'}</p>
+                        </div>
+                        <span className="text-lg font-black text-pink-600">Rs {svc.price || 0}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                {/* Total Bill */}
+                <div className="bg-white p-4 rounded-[16px] border-2 border-slate-100 flex justify-between items-center">
+                  <span className="font-black text-slate-700">Total Bill:</span>
+                  <span className="text-2xl font-black text-pink-600">Rs {totalPrice}</span>
+                </div>
+                
+                {/* Status Icon */}
+                <div className="flex justify-center">
+                  {tab === 'Done' ? <CheckCircle2 className="text-teal-600" size={32} /> : <Clock className="text-yellow-600" size={32} />}
                 </div>
               </div>
             );
