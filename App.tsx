@@ -617,12 +617,12 @@ const App: React.FC = () => {
     // Build services array from serviceCart or use single service
     const servicesArray = serviceCart.length > 0 ? serviceCart.map(s => ({
       serviceId: (s as any)._id || s.id,
-      serviceName: s.name,
+      serviceName: typeof s.name === 'object' ? s.name[lang] : s.name,
       price: parseInt(s.rate.replace(/[^\d]/g, ''), 10) || 0,
       duration: s.time || '1 hour'
     })) : [{
       serviceId,
-      serviceName: selectedService.name,
+      serviceName: typeof selectedService.name === 'object' ? selectedService.name[lang] : selectedService.name,
       price: parseInt(selectedService.rate.replace(/[^\d]/g, ''), 10) || 0,
       duration: selectedService.time || '1 hour'
     }];
@@ -1198,9 +1198,9 @@ const App: React.FC = () => {
             {renderContent()}
           </div>
 
-          {/* Floating Cart Button */}
+          {/* Floating Cart Button - Top Right Fixed */}
           {view === 'main' && serviceCart.length > 0 && (
-            <div className="fixed bottom-32 right-6 z-40">
+            <div className="fixed top-6 right-6 z-40">
               <button
                 onClick={() => {
                   // Toggle cart modal or show mini-list
