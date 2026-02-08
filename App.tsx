@@ -387,6 +387,11 @@ const App: React.FC = () => {
             status: b.status === 'Done' || b.status === 'completed' ? 'Done' : 'Pending',
             date: b.date,
             rate: b.totalPrice ? `₹${b.totalPrice}` : '₹0',
+            services: (b.services && Array.isArray(b.services)) ? b.services : [],
+            customerName: b.customerName || undefined,
+            address: b.address || undefined,
+            totalPrice: b.totalPrice || 0,
+            totalDuration: b.totalDuration || undefined,
           }));
           setOrders(orders);
         }
@@ -677,13 +682,16 @@ const App: React.FC = () => {
     .then(data => {
       console.log('✅ Booking received:', data);
       
-      // Create local order record for UI
+      // Create local order record for UI with full services array
       const order: Order = {
         id: data._id || Math.random().toString(36).substr(2, 9),
         serviceName: selectedService?.name[lang] || 'Service',
         status: 'Pending',
         date: date,
         rate: selectedService?.rate || '₹0',
+        services: servicesArray,
+        totalPrice: totalPrice,
+        totalDuration: selectedService?.time || null,
       };
       setOrders([order, ...orders]);
       

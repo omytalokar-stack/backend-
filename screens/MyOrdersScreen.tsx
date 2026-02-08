@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { translations } from '../translations';
 import { Order, Language } from '../types';
-import { CheckCircle2, Clock, Box } from 'lucide-react';
+import { CheckCircle2, Clock, Box, MapPin, Phone } from 'lucide-react';
 
 interface Props {
   orders: Order[];
@@ -46,7 +46,7 @@ const MyOrdersScreen: React.FC<Props> = ({ orders, lang }) => {
           filteredOrders.map(order => {
             const hasServices = (order as any).services && Array.isArray((order as any).services) && (order as any).services.length > 0;
             const servicesList = hasServices ? (order as any).services : [{ serviceName: order.serviceName, price: parseFloat(order.rate?.replace(/[^\d]/g, '') || '0') || 0 }];
-            const totalPrice = servicesList.reduce((sum: number, s: any) => sum + (s.price || 0), 0);
+            const totalPrice = hasServices ? order.totalPrice || servicesList.reduce((sum: number, s: any) => sum + (s.price || 0), 0) : servicesList.reduce((sum: number, s: any) => sum + (s.price || 0), 0);
             
             return (
               <div key={order.id} className="bg-gradient-to-br from-purple-50 to-pink-50 p-6 rounded-[30px] border-2 border-purple-100 shadow-md space-y-4 group hover:shadow-lg transition-all">
@@ -63,17 +63,29 @@ const MyOrdersScreen: React.FC<Props> = ({ orders, lang }) => {
                     {servicesList.length === 1 ? order.serviceName : `${servicesList.length} Services Order`}
                   </h4>
                 </div>
+
+                {/* Address Section - if available */}
+                {order.address && (
+                  <div className="bg-white p-3 rounded-[12px] border-2 border-blue-100 flex gap-2 items-start">
+                    <MapPin size={20} className="text-blue-600 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-xs font-bold text-slate-500">Delivery Address</p>
+                      <p className="font-black text-slate-800 text-sm">{order.address}</p>
+                    </div>
+                  </div>
+                )}
                 
                 {/* Services List */}
                 {servicesList.length > 0 && (
                   <div className="space-y-2">
+                    <p className="text-xs font-black text-slate-600 uppercase tracking-wide">🛍️ Services ({servicesList.length})</p>
                     {servicesList.map((svc: any, idx: number) => (
                       <div key={idx} className="bg-white p-3 rounded-[12px] border-2 border-slate-100 flex justify-between items-center hover:border-pink-200 transition-all">
                         <div>
                           <p className="font-black text-slate-800">{svc.serviceName || 'Service'}</p>
                           <p className="text-xs text-slate-500 mt-1">⏱️ {svc.duration || '1 hour'}</p>
                         </div>
-                        <span className="text-lg font-black text-pink-600">Rs {svc.price || 0}</span>
+                        <span className="text-lg font-black text-pink-600">₹{svc.price || 0}</span>
                       </div>
                     ))}
                   </div>
@@ -82,7 +94,7 @@ const MyOrdersScreen: React.FC<Props> = ({ orders, lang }) => {
                 {/* Total Bill */}
                 <div className="bg-white p-4 rounded-[16px] border-2 border-slate-100 flex justify-between items-center">
                   <span className="font-black text-slate-700">Total Bill:</span>
-                  <span className="text-2xl font-black text-pink-600">Rs {totalPrice}</span>
+                  <span className="text-2xl font-black text-pink-600">₹{Math.round(totalPrice)}</span>
                 </div>
                 
                 {/* Status Icon */}

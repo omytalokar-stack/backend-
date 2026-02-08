@@ -28,6 +28,11 @@ export interface Order {
   rate: string;
   startHour?: number;
   endHour?: number;
+  services?: Array<{ serviceId: string; serviceName: string; price: number; duration: string }>;
+  customerName?: string;
+  address?: string;
+  totalPrice?: number;
+  totalDuration?: string;
 }
 
 export interface AppState {

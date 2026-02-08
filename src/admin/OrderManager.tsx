@@ -415,7 +415,7 @@ const OrderManager: React.FC = () => {
                           <p className="font-black text-slate-800">{svc.serviceName || nameByService(detailPageOrder.serviceId)}</p>
                           <p className="text-xs text-slate-500 mt-0.5">⏱️ {svc.duration || detailPageOrder.totalDuration || '1 hour'}</p>
                         </div>
-                        <span className="text-lg font-black text-pink-600">Rs {svc.price || 0}</span>
+                        <span className="text-lg font-black text-pink-600">₹{svc.price || 0}</span>
                       </div>
                     ))}
                   </div>
@@ -430,7 +430,7 @@ const OrderManager: React.FC = () => {
                 <div className="border-t-2 border-slate-200 pt-3 mt-3">
                   <div className="flex justify-between items-center">
                     <span className="font-black text-slate-700">Total Bill:</span>
-                    <span className="text-2xl font-black text-pink-600">Rs {detailPageOrder.totalPrice || 0}</span>
+                    <span className="text-2xl font-black text-pink-600">₹{detailPageOrder.totalPrice || 0}</span>
                   </div>
                   {detailPageOrder.totalDuration && (
                     <div className="flex justify-between items-center mt-2 text-sm">

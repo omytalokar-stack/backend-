@@ -516,6 +516,11 @@ router.get('/orders', authenticateToken, ensureAdmin, async (req, res) => {
         startHour: b.startHour || 0,
         endHour: b.endHour || 0,
         status: status,
+        customerName: b.customerName || null,
+        address: b.address || null,
+        totalPrice: b.totalPrice || 0,
+        totalDuration: b.totalDuration || null,
+        services: (b.services && Array.isArray(b.services)) ? b.services : [],
         createdAt: b.createdAt,
         updatedAt: b.updatedAt
       };
