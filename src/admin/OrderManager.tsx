@@ -61,7 +61,15 @@ const OrderManager: React.FC = () => {
       console.log('✅ Services:', Array.isArray(d2) ? d2.length : 0);
       console.log('✅ Users:', Array.isArray(d3) ? d3.length : 0);
       
-      setOrders(Array.isArray(d1) ? d1 : []);
+      // Enrich orders with services array info
+      const enrichedOrders = (Array.isArray(d1) ? d1 : []).map((order: any) => ({
+        ...order,
+        servicesList: order.services && Array.isArray(order.services) && order.services.length > 0 
+          ? order.services 
+          : [{ serviceId: order.serviceId, serviceName: '', price: 0 }]
+      }));
+      
+      setOrders(enrichedOrders);
       setServices(Array.isArray(d2) ? d2 : []);
       setUsers(Array.isArray(d3) ? d3 : []);
     } catch (e) {
@@ -369,8 +377,8 @@ const OrderManager: React.FC = () => {
                 <div className="text-xs text-slate-500 mt-2 font-bold">Order ID: {detailPageOrder._id.slice(-8).toUpperCase()}</div>
                 <div className="text-xs text-slate-500 font-bold">{getCustomerDetails(detailPageOrder.userId).email}</div>
                 
-                {/* Address if present */}
-                {detailPageOrder.address && (
+                {/* Address - from booking form if available */}
+                {(detailPageOrder.address || (detailPageOrder as any).servicesList?.[0]?.address) && (
                   <div className="text-sm font-bold text-slate-700 mt-3 p-3 bg-blue-50 rounded-[12px] border-l-4 border-blue-400">
                     📍 <span className="font-black">{detailPageOrder.address}</span>
                   </div>
@@ -478,10 +486,12 @@ const OrderManager: React.FC = () => {
                       {/* Services & Order ID */}
                       <div className="flex justify-between items-start gap-2">
                         <div className="flex-1 min-w-0">
-                          {(o as any).services && Array.isArray((o as any).services) && (o as any).services.length > 0 ? (
+                          {(o as any).servicesList && Array.isArray((o as any).servicesList) && (o as any).servicesList.length > 0 ? (
                             <div className="space-y-1">
-                              {(o as any).services.map((svc: any, idx: number) => (
-                                <div key={idx} className="text-sm font-bold text-slate-600">{svc.serviceName || nameByService(o.serviceId)}</div>
+                              {(o as any).servicesList.map((svc: any, idx: number) => (
+                                <div key={idx} className="text-sm font-bold text-slate-600">
+                                  {svc.serviceName || nameByService(svc.serviceId || o.serviceId)}
+                                </div>
                               ))}
                             </div>
                           ) : (

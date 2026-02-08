@@ -356,14 +356,18 @@ const BookingPage: React.FC<Props> = ({ service, serviceCart, lang, onConfirm, g
               </div>
             ) : (
               (() => {
-                const todayStr = new Date().toISOString().slice(0,10);
+                const todayStr = new Date().toISOString().slice(0, 10);
                 const isToday = formData.date === todayStr;
                 const now = new Date();
-                const minAllowedHour = now.getHours() + 1; // only slots >= this hour
+                const currentHourFloat = now.getHours() + (now.getMinutes() / 60);
+                const minAllowedHour = Math.ceil(currentHourFloat); // Only slots AFTER current time
+                
                 const filtered = slots.filter(s => {
                   if (!isToday) return true;
-                  return (typeof s.startHour === 'number') ? s.startHour >= minAllowedHour : true;
+                  // For today, only show slots that start AFTER current hour
+                  return (typeof s.startHour === 'number') ? s.startHour > currentHourFloat : true;
                 });
+                
                 // If current selected slot is now invalid, clear it
                 if (isToday && formData.slot) {
                   const stillValid = filtered.find(fs => fs.label === formData.slot);
@@ -371,6 +375,7 @@ const BookingPage: React.FC<Props> = ({ service, serviceCart, lang, onConfirm, g
                     setFormData({ ...formData, slot: '', startHour: 0, endHour: 0 });
                   }
                 }
+                
                 return (
                   <>
                     {isToday && filtered.length < slots.length && (
