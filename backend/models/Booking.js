@@ -2,7 +2,10 @@ const mongoose = require('mongoose');
 
 const bookingSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  serviceId: { type: String, ref: 'Service', required: true },
+  // Legacy single-service reference (nullable). Multi-service bookings use `serviceIds` + `services` array.
+  serviceId: { type: String, ref: 'Service', required: false },
+  // For cart/multi-service bookings: store referenced service ids
+  serviceIds: [{ type: String }],
   date: { type: String, required: true },
   startHour: { type: Number, required: true },
   endHour: { type: Number, required: true },

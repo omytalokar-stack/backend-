@@ -493,7 +493,9 @@ router.delete('/reels/:id', authenticateToken, ensureAdmin, async (req, res) => 
 router.get('/orders', authenticateToken, ensureAdmin, async (req, res) => {
   try {
     console.log('📥 Fetching orders...');
+    // Populate basic user info for contact details in the Admin card
     const list = await Booking.find()
+      .populate('userId', 'nickname email phone avatarUrl')
       .sort({ createdAt: -1 });
     
     const now = new Date();
@@ -508,19 +510,24 @@ router.get('/orders', authenticateToken, ensureAdmin, async (req, res) => {
           console.log(`✅ Auto-completed order ${b._id}: end time ${b.date} ${b.endHour}:00 has passed`);
         }
       }
+      // Build a compact admin-facing card with contact + services summary
+      const user = b.userId || {};
       return {
         _id: b._id,
-        userId: b.userId,
-        serviceId: b.serviceId,
+        userId: b.userId?._id || null,
+        contactName: b.customerName || user.nickname || null,
+        contactEmail: user.email || null,
+        contactPhone: user.phone || null,
+        profilePhoto: user.avatarUrl || null,
         date: b.date || '',
         startHour: b.startHour || 0,
         endHour: b.endHour || 0,
         status: status,
-        customerName: b.customerName || null,
         address: b.address || null,
         totalPrice: b.totalPrice || 0,
         totalDuration: b.totalDuration || null,
         services: (b.services && Array.isArray(b.services)) ? b.services : [],
+        serviceIds: (b.serviceIds && Array.isArray(b.serviceIds)) ? b.serviceIds : (b.serviceId ? [b.serviceId] : []),
         createdAt: b.createdAt,
         updatedAt: b.updatedAt
       };

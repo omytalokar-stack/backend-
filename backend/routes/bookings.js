@@ -133,35 +133,57 @@ router.post('/', authenticateToken, async (req, res) => {
     
     // Enhanced validation with detailed logging
     const missingFields = [];
-    if (!serviceId) missingFields.push('serviceId');
+    // Require either a single serviceId (single-booking) OR a servicesArray (cart/multi-booking)
+    if (!serviceId && !(Array.isArray(servicesArray) && servicesArray.length > 0)) missingFields.push('serviceId|servicesArray');
     if (!date) missingFields.push('date');
-    if (startHour == null) missingFields.push('startHour');
-    if (endHour == null) missingFields.push('endHour');
-    
+    if (startHour == null && !startAmpm) missingFields.push('startHour');
+    if (endHour == null && !endAmpm) missingFields.push('endHour');
+
     if (missingFields.length > 0) {
       console.error('❌ Missing required fields:', missingFields);
       return res.status(400).json({ 
         error: `Missing required fields: ${missingFields.join(', ')}`,
-        received: { serviceId, date, startHour, endHour }
+        received: { serviceId, date, startHour, endHour, startAmpm, endAmpm }
       });
     }
-    
-    // Validate hour values
-      function to24(h, ampm) {
-        const hh = Number(h);
-        if (!ampm && !Number.isInteger(hh)) return NaN;
-        if (!ampm) return hh;
-        const upper = String(ampm).toUpperCase();
-        if (upper === 'AM') {
-          if (hh === 12) return 0;
-          return hh;
-        }
-        if (hh === 12) return 12;
-        return hh + 12;
+
+    // Robust parser: accept numeric 24h, numeric 12h with am/pm either in a separate field
+    // or embedded in the `startHour`/`endHour` value like "2 PM" or "2:00 PM".
+    function to24(h, ampm) {
+      if (h == null && !ampm) return NaN;
+      const raw = String(h || '').trim();
+      // Try to extract hour and optional am/pm from raw string
+      const m = raw.match(/^(\d{1,2})(?::\d{2})?\s*(AM|PM|am|pm)?$/);
+      let hh = NaN;
+      let providedAmpm = ampm;
+      if (m) {
+        hh = Number(m[1]);
+        if (!providedAmpm && m[2]) providedAmpm = m[2];
+      } else if (raw.length > 0 && !isNaN(Number(raw))) {
+        hh = Number(raw);
       }
 
-      const startHourNum = to24(startHour, startAmpm);
-      const endHourNum = to24(endHour, endAmpm);
+      if (Number.isNaN(hh)) return NaN;
+
+      if (!providedAmpm) {
+        // If hh already in 13..23, assume 24-hour
+        if (hh >= 13 && hh <= 23) return hh;
+        // If hh between 0..12 and no ampm, treat as literal hour
+        return hh;
+      }
+
+      const upper = String(providedAmpm).toUpperCase();
+      if (upper === 'AM') {
+        if (hh === 12) return 0;
+        return hh;
+      }
+      // PM
+      if (hh === 12) return 12;
+      return hh + 12;
+    }
+
+    const startHourNum = to24(startHour, startAmpm);
+    const endHourNum = to24(endHour, endAmpm);
     
     if (isNaN(startHourNum) || isNaN(endHourNum)) {
       console.error('❌ Hours must be numbers:', { startHour, endHour, parsed: { startHourNum, endHourNum } });
@@ -213,7 +235,10 @@ router.post('/', authenticateToken, async (req, res) => {
     // Safe to create booking with optional customerName, address, and services array
     const bookingData = { 
       userId: req.user.userId, 
-      serviceId, 
+      // keep legacy serviceId for single bookings; set to null for cart bookings
+      serviceId: serviceId || null, 
+      // store serviceIds array derived from servicesArray for multi-bookings
+      serviceIds: (Array.isArray(servicesArray) && servicesArray.length > 0) ? servicesArray.map(s => s.serviceId || s.id || null).filter(Boolean) : (serviceId ? [serviceId] : []),
       date, 
       startHour: startHourNum, 
       endHour: endHourNum, 
